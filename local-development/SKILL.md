@@ -22,7 +22,7 @@ Production-grade local development setup using Docker Compose to orchestrate a P
 2. **No access keys** — AWS credentials shared via `~/.aws` mount (read-only). Region always explicit. Never store access keys in `.env`, environment variables, or code.
 3. **One-command setup** — A single `./setup.sh` bootstraps everything: dependency checks, env file creation, container builds, database health polling, migrations, and service startup.
 4. **Health-checked dependencies** — Services wait for dependencies to be truly ready (PostgreSQL `pg_isready`), not just container-started.
-5. **Auto-migrations** — Database migrations run automatically in the API entrypoint before the server starts. `alembic upgrade head` is idempotent.
+5. **Auto-migrations and seeding** — Database migrations and seed data run automatically in the API entrypoint before the server starts. Both must be idempotent. Reference data (domain definitions, topic structures) is embedded in the seed script — never depend on external files at runtime.
 6. **Non-root containers** — API containers run as `appuser:1001`, never root.
 7. **Hot-reload everything** — Source code mounted as bind volumes for live changes without rebuilding.
 
@@ -39,7 +39,7 @@ Production-grade local development setup using Docker Compose to orchestrate a P
 ```
 
 - **DB** starts first, health-checked with `pg_isready`
-- **API** starts after DB is healthy, runs migrations in entrypoint, then starts server
+- **API** starts after DB is healthy, runs migrations + seed in entrypoint, then starts server
 - **UI** starts after API, connects via `localhost` (browser) or service name (SSR)
 
 ## How to Use This Skill
@@ -69,7 +69,7 @@ To containerize an existing project with separate `api/` and `ui/` directories:
 1. Start with `assets/templates/docker-compose.yml` and adapt service definitions.
 2. Add Dockerfiles to each service directory using the templates.
 3. Create `setup.sh` from the template for one-command bootstrap.
-4. Ensure the API entrypoint runs migrations before starting the server.
+4. Ensure the API entrypoint runs migrations and seeding before starting the server.
 
 For volume mount strategies (hot-reload, node_modules isolation, data persistence), consult `references/docker-compose-patterns.md`.
 
@@ -84,16 +84,19 @@ To set up AWS service access (Bedrock, S3, etc.) in the local dev environment:
 
 The mount target path must match the container user's home directory. If using `appuser` with home `/home/appuser`, mount to `/home/appuser/.aws`.
 
-### Setting Up Database with Migrations
+### Setting Up Database with Migrations and Seeding
 
-To configure PostgreSQL with Alembic migrations:
+To configure PostgreSQL with Alembic migrations and automatic data seeding:
 
 1. Use the PostgreSQL healthcheck pattern in docker-compose.yml
 2. Configure SQLAlchemy engine with connection pooling (`pool_pre_ping=True`)
 3. Set up Alembic with `DATABASE_URL` from environment (fail if missing)
-4. Run migrations in both `setup.sh` (first-time) and `entrypoint.sh` (every start)
+4. Run migrations and seeding in the API entrypoint (every container start)
+5. Use `ENTRYPOINT` + `CMD` pattern so `docker-compose command:` overrides the server command while entrypoint still runs migrations + seed
+6. Seed scripts must be idempotent (clear-then-insert) and embed reference data directly — no external file dependencies at runtime
+7. Use synchronous SQLAlchemy (`psycopg2`) for seed scripts, async (`asyncpg`) for the FastAPI app
 
-For detailed configuration, session management, and migration patterns, consult `references/config-and-database.md`.
+For detailed configuration, session management, migration, and seeding patterns, consult `references/config-and-database.md`.
 
 ## Decision Guidance
 
@@ -137,6 +140,9 @@ For detailed configuration, session management, and migration patterns, consult 
 - **Fallback defaults for required config** — `database_url: str = "sqlite:///local.db"` masks misconfiguration. Fail at startup.
 - **Mounting node_modules from host** — Breaks native binaries built for different OS. Use anonymous volumes.
 - **Committing `.env`** — Commit `.env.example` only. Gitignore `.env`.
+- **Runtime dependency on reference files** — Seed scripts that parse external files (exam guides, topic lists) at runtime break when those files aren't mounted. Embed reference data directly in the seed script; external files are for generation, not runtime.
+- **Manual migration/seed commands** — Running `docker compose exec api alembic upgrade head` manually after startup. Use the entrypoint to automate this on every container start.
+- **Hardcoded server command in entrypoint** — Use `exec "$@"` to pass through the `CMD`/`command:` override, not a hardcoded `exec uvicorn ...`. This lets docker-compose override the server command (e.g., `--reload`) while still running migrations.
 
 ## Quick Reference
 
@@ -173,7 +179,10 @@ project/
 │   │   ├── main.py          # FastAPI entry point
 │   │   ├── config.py         # Pydantic Settings
 │   │   ├── database.py       # SQLAlchemy setup
-│   │   └── models.py         # ORM models
+│   │   ├── models.py         # ORM models
+│   │   └── seed/             # Seed scripts + bundled data
+│   │       ├── seed_database.py  # Idempotent seed (embedded reference data)
+│   │       └── generated_data.json  # Build-time generated content
 │   ├── alembic/              # Migration versions
 │   ├── Dockerfile
 │   ├── entrypoint.sh
@@ -198,7 +207,7 @@ Ready-to-adapt templates are available in `assets/templates/`:
 | `setup.sh` | One-command bootstrap script |
 | `env.example` | Environment variable template (no secrets) |
 | `api.Dockerfile` | Python 3.11 with non-root user |
-| `api.entrypoint.sh` | Migration + server startup |
+| `api.entrypoint.sh` | Migration + seed + server startup (`exec "$@"` pass-through) |
 | `ui.Dockerfile` | Node 20 with npm dev server |
 
 ## References
@@ -207,4 +216,4 @@ Ready-to-adapt templates are available in `assets/templates/`:
 |-------|------|--------------|
 | Docker Compose | `references/docker-compose-patterns.md` | Health checks, volumes, networking, AWS mounts, env vars |
 | Setup Automation | `references/setup-automation.md` | Script structure, health polling, teardown, common commands |
-| Config & Database | `references/config-and-database.md` | Pydantic Settings, SQLAlchemy pooling, Alembic, health endpoints |
+| Config & Database | `references/config-and-database.md` | Pydantic Settings, SQLAlchemy pooling, Alembic, seeding, health endpoints |

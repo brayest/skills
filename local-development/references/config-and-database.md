@@ -155,17 +155,98 @@ def run_migrations_online():
 
 ### Entrypoint Integration
 
-Run migrations before starting the application server:
+Run migrations and seeding before starting the application server. Use `ENTRYPOINT` + `CMD` so docker-compose `command:` can override the server command while still running migrations.
 
-```bash
-#!/bin/bash
-set -e
-
-alembic upgrade head
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+**Dockerfile:**
+```dockerfile
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-`exec` replaces the shell process with uvicorn, ensuring proper signal handling (SIGTERM reaches uvicorn directly, not the bash wrapper).
+**entrypoint.sh:**
+```sh
+#!/bin/sh
+set -e
+
+echo "Running database migrations..."
+alembic upgrade head
+
+echo "Seeding database..."
+python -m app.infrastructure.seed.seed_database
+
+echo "Starting application..."
+exec "$@"
+```
+
+Key patterns:
+- **`exec "$@"`** passes through the `CMD` (or docker-compose `command:` override) as the final process. This replaces the shell with the actual server, ensuring proper signal handling (SIGTERM reaches uvicorn directly).
+- **docker-compose override**: `command: ["uvicorn", "...", "--reload"]` replaces `CMD` but the entrypoint still runs migrations + seed first.
+- **`/bin/sh`** not `/bin/bash` — slim images may not have bash.
+
+### Database Seeding on Startup
+
+Seed scripts run after migrations in the entrypoint. They must be **idempotent** — safe to run on every container start without duplicating data.
+
+**Pattern: Clear-and-reseed (simple, idempotent)**
+```python
+"""Seed script — runs on every container start."""
+
+from app.infrastructure.database import SessionLocal
+from app.infrastructure import models
+
+# Embed reference data directly — no external file dependencies at runtime.
+# Reference files (exam guides, topic lists) are for generation only.
+DOMAINS = [
+    {"id": 1, "name": "Domain 1: Core Concepts", "weight": 30.0},
+    {"id": 2, "name": "Domain 2: Implementation", "weight": 40.0},
+    {"id": 3, "name": "Domain 3: Operations", "weight": 30.0},
+]
+
+def clear_existing_data(db):
+    """Delete in reverse FK dependency order."""
+    db.query(models.AnswerModel).delete()
+    db.query(models.QuestionModel).delete()
+    db.query(models.DomainModel).delete()
+    db.commit()
+
+def seed_domains(db):
+    for domain in DOMAINS:
+        db.add(models.DomainModel(**domain))
+    db.commit()
+
+def seed_questions(db):
+    """Load from bundled JSON (generated at build time, not runtime)."""
+    import json
+    from pathlib import Path
+    questions_file = Path(__file__).parent / "generated_data.json"
+    with open(questions_file) as f:
+        data = json.load(f)
+    for q in data["questions"]:
+        db.add(models.QuestionModel(**q))
+    db.commit()
+
+def main():
+    db = SessionLocal()
+    try:
+        clear_existing_data(db)
+        seed_domains(db)
+        seed_questions(db)
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    main()
+```
+
+**Key principles:**
+- **Embed reference data** — Domain names, topic structures, and other reference data that was derived from external files (exam guides, specifications) should be hardcoded in the seed script. The app should not depend on reference files at runtime.
+- **Bundle generated data** — Generated JSON files (questions, content) are committed to the repo and copied into the Docker image. They are build artifacts, not runtime dependencies.
+- **Synchronous SQLAlchemy** — Seed scripts use synchronous `SessionLocal` (psycopg2), not the async session used by FastAPI. Add both drivers to dependencies.
+- **Clear-then-insert** — Delete all data in reverse FK order, then re-insert. Simple and idempotent. Acceptable for dev environments and applications with static seed data.
+- **Verify after seeding** — Assert expected counts to catch data corruption early.
 
 ### Migration Commands
 
