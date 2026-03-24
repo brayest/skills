@@ -23,6 +23,7 @@ Skills are modular packages that extend Claude Code with domain expertise — th
 | [local-development](local-development/) | Docker Compose dev environment — API + UI + DB orchestration, one-command setup, AWS credential handling | Scaffolding new projects, adding Docker Compose, configuring local AWS integration, setting up migrations |
 | [vault-kubernetes](vault-kubernetes/) | HashiCorp Vault + K8s secret management — service account auth, `hvac` client, Helm chart configuration | Adding Vault to K8s services, implementing VaultSecretManager, debugging auth failures |
 | [beam2-cert-manager](beam2-cert-manager/) | SSL/TLS certificate renewal workflow — CSR generation, Vault secret updates, field preservation | Renewing client certificates (Corteva, Anthem, Deloitte, etc.) stored in HashiCorp Vault |
+| [beam2-sso](beam2-sso/) | beam2 SAML SSO system — Shibboleth relay, PHP hash validation, JIT user provisioning, salt config, troubleshooting | Debugging SSO failures, adding new SSO clients, tracing IdP attribute mapping, investigating user provisioning |
 
 ### Specialized
 
