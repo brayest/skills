@@ -1,4 +1,8 @@
-# Certificate Renewal Process - Universal Guide
+# Certificate Renewal Process — HCP Vault Brand-Portal TLS
+
+> **Scope**: This reference covers the **HCP Vault brand-portal TLS cert** flow only — used for Corteva, Anthem, Deloitte, and other per-client brand-portal domains (`brandcenter.corteva.com`, `brandhub.elevancehealth.com`, `brandportal.deloitte.com`, etc.) stored in HashiCorp Vault at `http://vault.monigle-utility.int` under `kv/CLIENTS/{CLIENT_NAME}`.
+>
+> For beam2 **SSO** certs (Shibboleth SP cert, `*.monigle.net`/`*.monigle2.net` wildcard, per-client IdP metadata), see [`ansible-sso-certs.md`](ansible-sso-certs.md). The SSO system is *not* in HCP Vault — it's in `ansible-shibboleth-sso/vault/certificates.yml` (ansible-vault) and `roles/shibboleth/files/{env}/*-IDP-metadata.xml` (plaintext XML).
 
 ## Overview
 

@@ -5,20 +5,22 @@
 ```
 push to branch
     ↓
-detect-changes        ← dorny/paths-filter: determine which services changed
+detect-changes        ← dorny/paths-filter: figure out which services changed
     ↓
 build (matrix)        ← docker build + push to ECR per changed service
     ↓
 deploy (matrix)       ← helm upgrade --install per changed service
     ↓
-integration-test      ← health checks + smoke test
+integration-test      ← rollout status + smoke health checks
 ```
 
-All jobs use self-hosted Kubernetes runners that are ephemeral (destroyed after each run). Any tool not pre-baked into the runner image must be installed and cached.
+All jobs run on self-hosted Kubernetes runners that are ephemeral (destroyed after each run). Any tool not pre-baked into the runner image must be installed and cached, and installs must go to `$HOME` since the runner runs as non-root.
 
 ---
 
 ## Branch → Environment Mapping
+
+Map the environment once at the workflow level so all downstream jobs inherit it:
 
 ```yaml
 env:
@@ -28,11 +30,9 @@ env:
         'dev' }}
 ```
 
-Always map at the workflow level so all downstream jobs inherit it.
-
 ---
 
-## Change Detection (detect-changes job)
+## Change Detection (`detect-changes` job)
 
 Use `dorny/paths-filter@v3` to determine which services changed:
 
@@ -41,29 +41,30 @@ Use `dorny/paths-filter@v3` to determine which services changed:
   id: changes
   with:
     base: ${{ github.ref }}
-    ref: ${{ github.sha }}
+    ref:  ${{ github.sha }}
     filters: |
-      service-a:
-        - 'service-a/**'
-      service-a-values:
-        - 'charts/values/service-a.yaml'
-      service-b:
-        - 'service-b/**'
-      service-b-values:
-        - 'charts/values/service-b.yaml'
-      backend-chart:
-        - 'charts/backend/**'
-      frontend-chart:
-        - 'charts/frontend/**'
+      <service-a>:
+        - 'services/<service-a>/**'
+      <service-a>-values:
+        - 'charts/values/<service-a>.yaml'
+      <service-b>:
+        - 'services/<service-b>/**'
+      <service-b>-values:
+        - 'charts/values/<service-b>.yaml'
+      chart:
+        - 'charts/<chart>/**'
+      infrastructure:
+        - 'infrastructure/**'
 ```
 
-**Rules**:
-- Service code changes trigger only that service
-- Chart template changes (`charts/backend/**`) trigger ALL services using that chart
-- Values file changes trigger only the specific service
-- All three trigger types result in build + deploy (no deploy-only path — ephemeral K8s runners cannot look up existing image tags reliably)
+**Rules:**
+- Service code change → builds and deploys that service.
+- Chart template change (`charts/<chart>/**`) → builds and deploys ALL services using that chart.
+- Values file change → builds and deploys that one service.
+- Code, chart, and values changes all funnel into build + deploy. There is no deploy-only path — ephemeral K8s runners cannot reliably resolve "the current image tag" so each pipeline rebuilds.
+- Optional: include an `infrastructure` filter if you want infra changes to gate downstream concerns (e.g., post a comment or run a plan). Apply itself is still done manually via `terragrunt`.
 
-### Matrix Construction
+### Matrix Construction (Bash)
 
 ```bash
 BUILD_SERVICES=()
@@ -74,27 +75,23 @@ service_matrix() {
   echo "{\"path\":\"$path\",\"service\":\"$service\",\"tag_prefix\":\"$tag_prefix\",\"runner\":\"$runner\",\"chart\":\"$chart\",\"has_domain\":\"$has_domain\"}"
 }
 
-# service-a: code, chart, or values change → build+deploy
-if [[ "$SERVICE_A" == "true" || "$BACKEND_CHART" == "true" || "$SERVICE_A_VALUES" == "true" ]]; then
-  entry=$(service_matrix "service-a" "service-a" "svc-a" "runners-arm" "backend" "true")
+# service-a: code, chart, or values change → build + deploy
+if [[ "$SERVICE_A" == "true" || "$CHART" == "true" || "$SERVICE_A_VALUES" == "true" ]]; then
+  entry=$(service_matrix "services/<service-a>" "<service-a>" "<tag-prefix>" "<runner-label>" "<chart>" "true")
   BUILD_SERVICES+=("$entry")
   DEPLOY_SERVICES+=("$entry")
 fi
 
-# frontend service: only frontend-chart or values triggers
-if [[ "$SERVICE_UI" == "true" || "$FRONTEND_CHART" == "true" || "$SERVICE_UI_VALUES" == "true" ]]; then
-  entry=$(service_matrix "service-ui" "service-ui" "ui" "runners-arm" "frontend" "true")
-  BUILD_SERVICES+=("$entry")
-  DEPLOY_SERVICES+=("$entry")
-fi
+# Repeat per service...
 
-# Output matrices
 HAS_BUILD=$([ ${#BUILD_SERVICES[@]} -gt 0 ] && echo "true" || echo "false")
-echo "build_services=[$(IFS=,; echo "${BUILD_SERVICES[*]}")]" >> $GITHUB_OUTPUT
-echo "has_build_changes=$HAS_BUILD" >> $GITHUB_OUTPUT
-echo "deploy_services=[$(IFS=,; echo "${DEPLOY_SERVICES[*]}")]" >> $GITHUB_OUTPUT
-echo "has_deploy_changes=$HAS_BUILD" >> $GITHUB_OUTPUT
+echo "build_services=[$(IFS=,; echo "${BUILD_SERVICES[*]}")]"   >> "$GITHUB_OUTPUT"
+echo "has_build_changes=$HAS_BUILD"                              >> "$GITHUB_OUTPUT"
+echo "deploy_services=[$(IFS=,; echo "${DEPLOY_SERVICES[*]}")]"  >> "$GITHUB_OUTPUT"
+echo "has_deploy_changes=$HAS_BUILD"                             >> "$GITHUB_OUTPUT"
 ```
+
+Keep this builder agnostic of service count — every service is one `if` block that calls `service_matrix`. Add or remove services by editing this block plus the `filters:` map.
 
 ---
 
@@ -122,14 +119,14 @@ build:
       with:
         context: ${{ matrix.service.path }}/
         push: true
-        tags: ${{ env.ECR_REGISTRY }}/btp-{app}:${{ matrix.service.tag_prefix }}-${{ github.sha }}
-        cache-from: type=s3,region=us-east-1,bucket=btp-utility-buildx-cache-us-east-1,name=${{ matrix.service.service }}
-        cache-to: type=s3,region=us-east-1,bucket=btp-utility-buildx-cache-us-east-1,name=${{ matrix.service.service }},mode=max
+        tags: ${{ env.ECR_REGISTRY }}/<ecr-repo>:${{ matrix.service.tag_prefix }}-${{ github.sha }}
+        cache-from: type=s3,region=us-east-1,bucket=<buildkit-cache-bucket>,name=${{ matrix.service.service }}
+        cache-to:   type=s3,region=us-east-1,bucket=<buildkit-cache-bucket>,name=${{ matrix.service.service }},mode=max
 ```
 
-**Image tag format**: `{tag_prefix}-{github.sha}` — unique per commit, traceable to source.
+**Image tag**: `<tag_prefix>-<github.sha>` — unique per commit, traceable to source.
 
-**BuildKit S3 cache**: Stores layer cache in utility account S3. Dramatically reduces build times for stable base images. The cache bucket is shared across environments.
+**BuildKit S3 cache**: stores layer cache in a shared S3 bucket (typically in the utility account). The `name=` parameter is the **per-service cache key** — sharing one cache key across services causes layer-hash collisions and silent cache misses. Keep one key per service.
 
 ---
 
@@ -149,39 +146,37 @@ deploy:
   steps:
     - uses: actions/checkout@v4
 
-    # AWS CLI — install to home dir (system path requires root, runner is non-root)
+    # AWS CLI — install to $HOME (system paths require root; runner is non-root)
     - name: Cache AWS CLI
       id: cache-aws
       uses: actions/cache@v4
       with:
         path: ~/.aws-cli
-        key: aws-cli-aarch64-2.33.14     # Pin version in cache key
+        key: aws-cli-aarch64-2.33.14    # Pin version in the cache key
 
     - name: Install AWS CLI
       if: steps.cache-aws.outputs.cache-hit != 'true'
       run: |
         curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
         unzip -q awscliv2.zip
-        ./aws/install --install-dir $HOME/.aws-cli --bin-dir $HOME/.aws-cli/bin
+        ./aws/install --install-dir "$HOME/.aws-cli" --bin-dir "$HOME/.aws-cli/bin"
         rm -rf aws awscliv2.zip
 
     - name: Add AWS CLI to PATH
-      run: echo "$HOME/.aws-cli/bin" >> $GITHUB_PATH    # Must run every time, not just on install
+      run: echo "$HOME/.aws-cli/bin" >> "$GITHUB_PATH"   # Must run every job, not just on install
 
-    - name: Setup Helm
-      uses: azure/setup-helm@v3
+    - uses: azure/setup-helm@v3
       with:
         version: v3.9.2
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+    - uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ env.ASSUME_ROLE }}          # DEV/QA/PROD_ASSUME_ROLE from secrets
+        role-to-assume: ${{ env.ASSUME_ROLE }}
         aws-region: us-east-1
         role-duration-seconds: 900
 
     - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name btp-${{ env.ENVIRONMENT }} --region us-east-1
+      run: aws eks update-kubeconfig --name <eks-cluster-name> --region us-east-1
 
     - name: Deploy
       run: |
@@ -190,55 +185,55 @@ deploy:
         HELM_CMD="helm upgrade --install ${{ matrix.service.service }} \
           ./charts/${{ matrix.service.chart }} \
           --values ./charts/values/${{ matrix.service.service }}.yaml \
-          --namespace {app-namespace} \
-          --set image.repository=${{ env.ECR_REGISTRY }}/{app-image} \
+          --namespace <namespace> \
+          --set image.repository=${{ env.ECR_REGISTRY }}/<ecr-repo> \
           --set image.tag=$IMAGE_TAG \
           --set settings.environment=${{ env.ENVIRONMENT }}"
 
-        # Inject domain (environment-specific) for services with ingress
+        # Inject env-specific domain for services with ingress
         if [[ "${{ matrix.service.has_domain }}" == "true" ]]; then
           case "${{ matrix.service.service }}" in
-            "service-a")
-              HELM_CMD="$HELM_CMD --set domains[0]=service-a.btp-${{ env.ENVIRONMENT }}.int"
+            "<service-a>")
+              HELM_CMD="$HELM_CMD --set domains[0]=<service-a>.<internal-domain-suffix-for-env>"
               ;;
-            "service-ui")
-              HELM_CMD="$HELM_CMD --set domains[0]=service-ui.btp-${{ env.ENVIRONMENT }}.int"
-              HELM_CMD="$HELM_CMD --set tlsPrivate[0].secretName=service-ui-tls-secret"
-              HELM_CMD="$HELM_CMD --set tlsPrivate[0].hosts[0]=service-ui.btp-${{ env.ENVIRONMENT }}.int"
+            "<service-ui>")
+              HELM_CMD="$HELM_CMD --set domains[0]=<service-ui>.<internal-domain-suffix-for-env>"
+              HELM_CMD="$HELM_CMD --set tlsPrivate[0].secretName=<service-ui>-tls-secret"
+              HELM_CMD="$HELM_CMD --set tlsPrivate[0].hosts[0]=<service-ui>.<internal-domain-suffix-for-env>"
               ;;
           esac
         fi
 
-        # Enable Datadog observability in non-dev environments
+        # Enable observability in non-dev environments
         if [[ "${{ env.ENVIRONMENT }}" != "dev" ]]; then
           HELM_CMD="$HELM_CMD --set observability.enabled=true"
         fi
 
-        eval $HELM_CMD
+        eval "$HELM_CMD"
 ```
 
-### AWS CLI Caching — Critical Note
+### AWS CLI Install Gotcha (read this once, save yourself an afternoon)
 
-Self-hosted K8s runners run as non-root. `actions/cache` restores via tar, which cannot write to `/usr/local/`. Always install CLI tools to `$HOME` paths:
+Self-hosted K8s runners run as non-root. `actions/cache` restores via `tar`, which cannot write to `/usr/local/`. Install CLI tools under `$HOME`:
 
-| ❌ Fails | ✓ Works |
-|---------|---------|
+| Fails | Works |
+|---|---|
 | `path: /usr/local/aws-cli` | `path: ~/.aws-cli` |
-| `./aws/install` (default: /usr/local) | `./aws/install --install-dir $HOME/.aws-cli --bin-dir $HOME/.aws-cli/bin` |
+| `./aws/install` (default `/usr/local`) | `./aws/install --install-dir $HOME/.aws-cli --bin-dir $HOME/.aws-cli/bin` |
 
-Always add an explicit `echo "$HOME/.aws-cli/bin" >> $GITHUB_PATH` step that runs on every job (not conditional on cache miss) — GitHub PATH context is not persisted between steps.
+Add an unconditional `echo "$HOME/.aws-cli/bin" >> "$GITHUB_PATH"` step on **every** deploy job, not just on cache miss — `$GITHUB_PATH` is not persisted between jobs.
 
 ---
 
 ## Per-Service Domain Injection
 
-Domains are injected at deploy time (not hardcoded in values files) because the domain suffix changes per environment (`btp-dev.int`, `btp-qa.int`, `btp-prod.int`):
+Domains are injected at deploy time, not hardcoded in values files, because the domain suffix changes per environment (`<internal-domain-suffix-for-dev>`, `<internal-domain-suffix-for-qa>`, `<internal-domain-suffix-for-prod>`):
 
 ```bash
---set domains[0]={service}.btp-$ENVIRONMENT.int
+--set domains[0]=<service>.<internal-domain-suffix-for-${ENVIRONMENT}>
 ```
 
-The Route53 record for `{service}.btp-{env}.int` is created by the `btp_service_cross` module. The Helm domain must match exactly.
+The Route53 record for `<service>.<internal-domain-suffix-for-env>` is created by the service-wiring module in Terraform. The Helm domain must match exactly.
 
 ---
 
@@ -248,29 +243,29 @@ The Route53 record for `{service}.btp-{env}.int` is created by the `btp_service_
 integration-test:
   needs: [detect-changes, deploy]
   if: needs.deploy.result == 'success'
-  runs-on: btp-runners
+  runs-on: <runner-label>
   steps:
     - name: Wait for deployments
       run: |
-        kubectl rollout status deployment/service-a -n {namespace} --timeout=300s
-        kubectl rollout status deployment/service-b -n {namespace} --timeout=300s
+        kubectl rollout status deployment/<service-a> -n <namespace> --timeout=300s
+        kubectl rollout status deployment/<service-b> -n <namespace> --timeout=300s
 
     - name: Verify pod health
       run: |
         # Wait for old ReplicaSets to terminate
         MAX_RETRIES=12
         for i in $(seq 1 $MAX_RETRIES); do
-          ACTIVE_RS=$(kubectl get rs -n {namespace} \
-            -l app=service-a \
+          ACTIVE_RS=$(kubectl get rs -n <namespace> \
+            -l app=<service-a> \
             --field-selector='status.availableReplicas>0' \
             -o json | jq '.items | length')
           [ "$ACTIVE_RS" -le 1 ] && break
           sleep 15
         done
 
-        # Verify API health
+        # Hit the health endpoint
         for i in $(seq 1 $MAX_RETRIES); do
-          curl -sf http://service-a.{namespace}.svc.cluster.local:{port}/health && break
+          curl -sf http://<service-a>.<namespace>.svc.cluster.local:<port>/health && break
           sleep 15
         done
 ```
@@ -279,15 +274,16 @@ integration-test:
 
 ## Multi-Architecture Runners
 
-Different services may require different runner architectures:
+Different services may need different runner architectures:
 
 ```yaml
-# In matrix definitions:
-runner: "btp-runners"          # ARM64 (aarch64) — default, cost-efficient
-runner: "btp-runners-x86"     # x86_64 — required for GPU workloads, some C extensions
+# In matrix entries:
+runner: "<runner-label-aarch64>"    # ARM — default, cost-efficient
+runner: "<runner-label-x86>"        # x86 — required for GPU workloads and some C extensions
 ```
 
-Match `--arch` in AWS CLI download URL to runner architecture:
+Match the `--arch` segment of the AWS CLI download URL to the runner architecture:
+
 - ARM: `awscli-exe-linux-aarch64.zip`
 - x86: `awscli-exe-linux-x86_64.zip`
 
@@ -295,30 +291,33 @@ Match `--arch` in AWS CLI download URL to runner architecture:
 
 ## Shared Config Files
 
-Some applications mount configuration files from a `config/` directory into the container at `/usr/share/env/`. The CI/CD copies these into the chart directory before deploying, then cleans up:
+Some applications mount config files from a `config/` directory into the container at runtime. The deploy job copies the directory into the chart's working tree before `helm upgrade` and removes it afterwards (so the chart on disk stays clean):
 
 ```bash
-cp -r ./config ./charts/${{ matrix.service.chart }}/config
-eval $HELM_CMD
-rm -rf ./charts/${{ matrix.service.chart }}/config
+cp -r ./config "./charts/${{ matrix.service.chart }}/config"
+eval "$HELM_CMD"
+rm -rf "./charts/${{ matrix.service.chart }}/config"
 ```
 
-The `deployment.yaml` template then mounts these files as a ConfigMap or volume.
+The chart's `deployment.yaml` then mounts these files as a ConfigMap or volume.
 
 ---
 
 ## GitHub Secrets Naming Convention
 
 ```
-ECR_REGISTRY                  # {account}.dkr.ecr.us-east-1.amazonaws.com
-DEV_ASSUME_ROLE               # arn:aws:iam::{dev-account}:role/github-runner-role
-QA_ASSUME_ROLE                # arn:aws:iam::{qa-account}:role/github-runner-role
-PROD_ASSUME_ROLE              # arn:aws:iam::{prod-account}:role/github-runner-role
+ECR_REGISTRY                 # <account>.dkr.ecr.us-east-1.amazonaws.com
+DEV_ASSUME_ROLE              # arn:aws:iam::<dev-account>:role/<github-runner-role>
+QA_ASSUME_ROLE               # arn:aws:iam::<qa-account>:role/<github-runner-role>
+PROD_ASSUME_ROLE             # arn:aws:iam::<prod-account>:role/<github-runner-role>
 ```
 
-Select via environment mapping:
-```bash
-ASSUME_ROLE=${{ env.ENVIRONMENT == 'prod' && secrets.PROD_ASSUME_ROLE ||
-                env.ENVIRONMENT == 'qa'   && secrets.QA_ASSUME_ROLE   ||
-                secrets.DEV_ASSUME_ROLE }}
+Select via the environment mapping at workflow level:
+
+```yaml
+env:
+  ASSUME_ROLE: >-
+    ${{ env.ENVIRONMENT == 'prod' && secrets.PROD_ASSUME_ROLE ||
+        env.ENVIRONMENT == 'qa'   && secrets.QA_ASSUME_ROLE   ||
+        secrets.DEV_ASSUME_ROLE }}
 ```

@@ -1,211 +1,55 @@
 ---
 name: beam2-cert-manager
-description: This skill should be used when users need to renew SSL/TLS certificates for clients. The certificates are stored in HashiCorp Vault, and this skill provides the complete workflow for generating CSRs, updating Vault secrets, and managing the renewal process for any client (Corteva, Anthem, Deloitte, etc.).
+description: Use when renewing any beam2 certificate. Routes between two systems — (1) HCP Vault at http://vault.monigle-utility.int for brand-portal client TLS certs (Corteva, Anthem, Deloitte), and (2) the ansible-shibboleth-sso repo for beam2 SSO certs (Shibboleth SP signing certs `monigle`/`monigle2`, Apache wildcard `*.monigle.net`/`*.monigle2.net`, and per-client IdP metadata XML). Trigger on any of: renew/rotate cert, CSR, SSL renewal, SP cert, SAML signing cert, IdP metadata, shibboleth cert, `*.monigle.net` wildcard, `update {client}sso metadata`, or specific client IDs (allstatesso, cortevasso, gartnersso2/3, bcbsasso, aigsso2, bnymsso2, cgisso, chevronsso, deloitte2sso, petrocanadasso2, rbcsso2, storyspacesso, suttersso).
 ---
 
-# Certificate Renewal Manager
+# beam2 Certificate Manager
 
-## Overview
+## Which flow?
 
-This skill provides a standardized process for renewing SSL/TLS certificates for clients. All certificates are managed in HashiCorp Vault at `http://vault.monigle-utility.int`. The process is identical for every client - only the client name, domain, and organization details change.
+beam2 has **two independent cert systems**. Identify which the user is asking about before doing anything else.
 
-## When to Use This Skill
+| Ask / symptom | Cert category | System | Reference |
+|---|---|---|---|
+| "Renew Corteva / Anthem / Deloitte portal cert" — brand-portal TLS (`brandcenter.corteva.com`, `brandhub.elevancehealth.com`, etc.) | Per-client brand-portal TLS | HCP Vault `kv/CLIENTS/{CLIENT_NAME}` at `http://vault.monigle-utility.int` | [references/renewal-process.md](references/renewal-process.md) |
+| "Renew `monigle` SP cert" / "SAML signing cert expired" / "Shibboleth SP cred" | Shibboleth SP signing cert (`monigle`, `monigle2`) | `ansible-shibboleth-sso/vault/certificates.yml` (ansible-vault) | [references/ansible-sso-certs.md §1 SP signing certs](references/ansible-sso-certs.md) |
+| "Renew `*.monigle.net` / `*.monigle2.net` wildcard" | Apache wildcard SSL | `ansible-shibboleth-sso/vault/certificates.yml` (ansible-vault) | [references/ansible-sso-certs.md §2 Apache wildcard SSL](references/ansible-sso-certs.md) |
+| "Update IdP metadata for {client}sso" / "Client's IdP cert rotated" / "Allstate sent new metadata" | Per-client IdP metadata XML (contains IdP signing cert) | Plaintext at `ansible-shibboleth-sso/roles/shibboleth/files/{env}/{client}-IDP-metadata.xml` | [references/ansible-sso-certs.md §3 Per-client IdP metadata](references/ansible-sso-certs.md) |
 
-Use this skill when the user:
-- Needs to renew an SSL/TLS certificate for a client
-- Wants to generate a new CSR (Certificate Signing Request)
-- Needs to update certificates in Vault after receiving them from a CA
-- Asks about certificate renewal workflow or process
-- Mentions clients like Corteva, Anthem, Deloitte, ElevanceHealth
+**Disambiguation rules**:
+- `*sso.monigle.net` / `*sso.monigle2.net` → ansible flow.
+- Brand-portal domains (custom client TLDs like `*.corteva.com`, `*.elevancehealth.com`, `*.deloitte.com`) → HCP Vault flow.
+- If the user says "SSO cert" without qualifying further, ask whether they mean the shared SP cert (rotates everyone), the wildcard TLS, or a specific client's IdP metadata.
 
-**Trigger keywords**: "renew certificate", "CSR", "Vault certificates", "SSL renewal", "update certificate in Vault"
+## Pre-flight (both flows)
 
-## Prerequisites
+1. Confirm **prod or staging** — the ansible flow has separate inventories and file trees per env; the HCP Vault flow is prod-only.
+2. Required tools: `curl`, `jq`, `openssl`, plus `ansible`/`ansible-vault` for the ansible flow.
+3. Credentials:
+   - HCP Vault flow: token file at `~/.vault-token-xp`.
+   - Ansible flow: vault password file at `~/.ansible/vault_password` (0600). Referenced by `ansible-shibboleth-sso/ansible.cfg`.
+4. Ansible flow only: always `cd ansible-shibboleth-sso` before running playbooks. The `update_idp_metadata.yml` and `deploy_client.yml` playbooks use `delegate_to: localhost` with relative paths that resolve against `playbooks/` — running from anywhere else makes the `stat` tasks fail with "not found".
 
-Before starting, verify:
+## Flow A — HCP Vault brand-portal TLS
 
-1. **Vault Access**
-   - Valid Vault token in `~/.vault-token-xp`
-   - Network access to `http://vault.monigle-utility.int`
-   - Read/Write permissions for client secrets
+CSR → CA → `curl` update into HCP Vault at `http://vault.monigle-utility.int` under `kv/CLIENTS/{CLIENT_NAME}` (standard fields: `KEY`, `CERTIFICATE`, `CERT_CHAIN` — plus client-specific metadata like DB creds, CAPTCHA keys, historical year keys that must be preserved on update).
 
-2. **Required Tools**
-   ```bash
-   which curl jq openssl  # Verify all are installed
-   ```
+Full 6-step workflow with client-specific examples (Corteva, Anthem, Deloitte): [references/renewal-process.md](references/renewal-process.md).
 
-3. **Client Variables**
-   Identify these for the target client:
-   - `{CLIENT_NAME}` - Vault identifier (uppercase, e.g., CORTEVA, ANTHEM)
-   - `{DOMAIN}` - Primary domain (e.g., brandcenter.corteva.com)
-   - `{ORGANIZATION}` - Legal org name (extract from current cert)
-   - `{STATE}` - State/Province (extract from current cert)
-   - `{COUNTRY}` - Country code (usually US)
+## Flow B — Ansible SSO certs
 
-## Certificate Renewal Workflow
+All three SSO cert categories live in the `ansible-shibboleth-sso/` repo at `/Users/brayest/Work/MediaValet/Repositories/infrastructure/environment/beam2-cloud-infrastructure/ansible-shibboleth-sso/`. Rotation is playbook-driven, not curl-driven:
 
-Follow these 6 steps in order for any client:
+- **SP signing certs** (`monigle`, `monigle2`) and **Apache wildcard SSL** live in encrypted `vault/certificates.yml` — edit via `ansible-vault edit`, deploy with `ansible-playbook ... --tags certificates`.
+- **Per-client IdP metadata** is plaintext XML in `roles/shibboleth/files/{prod|staging}/{client}-IDP-metadata.xml`. Rotate via the dedicated `playbooks/update_idp_metadata.yml`.
+- Post-rotation: run `ansible-playbook -i inventory/{env}.yml playbooks/verify.yml` (checks shibd/apache status, cert dates, metadata endpoints).
 
-### Step 1: Verify Vault Access
+Full commands, file paths, variable names, blast-radius notes, and the known CWD quirk: [references/ansible-sso-certs.md](references/ansible-sso-certs.md).
 
-Test authentication and list available secret keys:
+## Cross-cutting rules
 
-```bash
-export VAULT_ADDR="http://vault.monigle-utility.int"
-export VAULT_TOKEN=$(cat ~/.vault-token-xp | tr -d '\n')
-
-curl -s -H "X-Vault-Token: $VAULT_TOKEN" \
-  $VAULT_ADDR/v1/kv/data/CLIENTS/{CLIENT_NAME} | jq '.data.data | keys'
-```
-
-**Expected**: Array including `KEY`, `CERTIFICATE`, `CERT_CHAIN`
-
-### Step 2: Retrieve Current Certificate Details
-
-Extract subject information and SANs from the existing certificate:
-
-```bash
-curl -s -H "X-Vault-Token: $VAULT_TOKEN" \
-  $VAULT_ADDR/v1/kv/data/CLIENTS/{CLIENT_NAME} | \
-  jq -r '.data.data.CERTIFICATE' > /tmp/{client}-current-cert.pem
-
-openssl x509 -in /tmp/{client}-current-cert.pem -noout -subject -text | \
-  grep -A2 "Subject:\|Subject Alternative Name"
-```
-
-Note the C, ST, O, CN, and all DNS names for CSR creation.
-
-### Step 3: Generate New Private Key
-
-⚠️ **Always generate a NEW key** (never reuse):
-
-```bash
-cd /Users/brayest/Work/MediaValet/Clients/{ClientName}
-
-openssl genrsa -out {domain}.key 2048
-chmod 600 {domain}.key
-```
-
-### Step 4: Create Certificate Signing Request (CSR)
-
-Generate CSR with correct subject and SANs:
-
-```bash
-openssl req -new \
-  -key {domain}.key \
-  -out {domain}.csr \
-  -subj "/C={COUNTRY}/ST={STATE}/O={ORGANIZATION}/CN={DOMAIN}" \
-  -addext "subjectAltName=DNS:{DOMAIN},DNS:www.{DOMAIN}"
-
-# Verify CSR
-openssl req -in {domain}.csr -noout -text | grep -A1 "Subject:\|DNS:"
-
-# Package for submission
-zip {domain}.csr.zip {domain}.csr
-```
-
-### Step 5: Submit CSR to Certificate Authority
-
-1. Send CSR file to the CA or client
-2. Wait for new certificate (typical: 1-5 business days)
-3. Receive: certificate (.crt) and chain (.crt) files
-
-### Step 6: Update Vault with New Certificate
-
-⚠️ **CRITICAL**: Preserve all existing client-specific fields
-
-**Method A: Using curl API (Recommended)**
-
-```bash
-# 1. Save current non-certificate fields
-curl -s -H "X-Vault-Token: $VAULT_TOKEN" \
-  $VAULT_ADDR/v1/kv/data/CLIENTS/{CLIENT_NAME} > /tmp/{client}-current.json
-
-jq '.data.data | with_entries(select(.key | IN("KEY", "CERTIFICATE", "CERT_CHAIN") | not))' \
-  /tmp/{client}-current.json > /tmp/{client}-preserve.json
-
-# 2. Create update payload with new certs + preserved fields
-cat > /tmp/{client}-update.json <<EOF
-{
-  "data": {
-    "KEY": "$(cat {domain}.key | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g')",
-    "CERTIFICATE": "$(cat {domain}.crt | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g')",
-    "CERT_CHAIN": "$(cat chain.crt | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g')",
-    $(jq -r 'to_entries | map("\"\(.key)\": \"\(.value)\"") | join(",\n    ")' /tmp/{client}-preserve.json)
-  }
-}
-EOF
-
-# 3. Update Vault
-curl -X POST \
-  -H "X-Vault-Token: $VAULT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @/tmp/{client}-update.json \
-  $VAULT_ADDR/v1/kv/data/CLIENTS/{CLIENT_NAME}
-
-# 4. Verify update
-curl -s -H "X-Vault-Token: $VAULT_TOKEN" \
-  $VAULT_ADDR/v1/kv/data/CLIENTS/{CLIENT_NAME} | \
-  jq -r '.data.data.CERTIFICATE' | \
-  openssl x509 -noout -subject -dates
-```
-
-## Important Reminders
-
-### Security Best Practices
-- ✅ **Always generate NEW private keys** for renewals
-- ✅ Set permissions: `chmod 600 *.key`
-- ✅ Verify CSR/certificate contents before submission/deployment
-- ❌ Never reuse private keys
-- ❌ Never commit keys to git
-- ❌ Never share keys via unencrypted channels
-
-### Field Preservation
-When updating Vault, you **must preserve** all non-certificate fields:
-- Database credentials: `DB_NAME`, `DB_PASSWORD`, `DB_USER`, `DB_HOST`
-- API keys: `CAPTCHA_PRIVATE`, `CAPTCHA_PUBLIC`, `TEMPLAFY_SECRET`
-- Historical keys: `2023_KEY`, `2024_KEY`, etc.
-
-**Failure to preserve these fields will break client applications!**
-
-### Common Client Patterns
-
-| Client | CLIENT_NAME | Example Domain | Typical Fields |
-|--------|-------------|---------------|----------------|
-| Corteva | `CORTEVA` | brandcenter.corteva.com | DB + CAPTCHA |
-| Anthem | `ANTHEM` | brandhub.elevancehealth.com | Historical keys + HSM |
-| Deloitte | `DELOITTE` | brandportal.deloitte.com | DB + Templafy |
-
-### Troubleshooting
-
-**"invalid token"**: Token expired - get fresh token and update `~/.vault-token-xp`
-
-**"unknown option -ext"**: macOS LibreSSL issue - use `-text | grep` instead of `-ext`
-
-**CSR missing SANs**: Use config file approach instead of `-addext` flag
-
-**Certificate/key mismatch**: Verify modulus matches:
-```bash
-openssl req -in {domain}.csr -noout -modulus | md5
-openssl x509 -in {domain}.crt -noout -modulus | md5
-openssl rsa -in {domain}.key -noout -modulus | md5
-# All three should match
-```
-
-## Detailed Documentation
-
-For comprehensive documentation including:
-- All Vault configuration details
-- Detailed troubleshooting guide
-- Security best practices
-- OpenSSL command reference
-- Multi-client examples
-- Verification procedures
-
-Refer to: `references/renewal-process.md`
-
----
-
-**Process applies to**: All clients using Vault-managed certificates
-**Vault URL**: http://vault.monigle-utility.int
-**Token File**: ~/.vault-token-xp
+- **Always generate new private keys on renewal.** Never reuse.
+- **Field preservation (HCP Vault flow):** the `kv/CLIENTS/{NAME}` secret holds cert + key + chain *and* unrelated client metadata (DB creds, API keys). Always read → preserve non-cert fields → write.
+- **Never commit plaintext secrets.** HCP Vault cert material stays in Vault. Ansible-vault cert material stays encrypted in `vault/certificates.yml`. **Plaintext IdP metadata XML** *is* committed to git — that's expected; the cert inside is the IdP's public signing cert, not a secret.
+- **Verify expiry before and after** rotation. `openssl x509 -noout -dates` on the deployed file on the server.
+- **Blast radius awareness (ansible flow):** the shared `monigle` SP cert is used by nearly every prod SSO client. Rotating it re-keys SAML for all of them — coordinate with each client's IdP admin. The per-client IdP metadata, in contrast, only affects that one client.
