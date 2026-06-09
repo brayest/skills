@@ -1,0 +1,29 @@
+{
+  "skill_name": "btp-data-explorer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How many new policies were created each month over the last year, broken down by line of business?",
+      "expected_output": "A monthly time series grouped by line_of_business, from exposure.exposure (exposure_type='REGISTER') joined to exposure.exposure_set, filtered to REGISTER and the last 12 months. Schema-qualified, single SELECT. Offers a chart.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "What's our total insured value by country, and which countries are biggest? Tell me if that's in dollars or cents.",
+      "expected_output": "TIV summed from property.exposure_unit_property (joined to exposure_unit, unit_type='PROPERTY'), grouped by address_country and currency, ordered desc. The agent first samples total_insured_value to reason about scale (whole units vs cents) and states the assumption.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Show me monthly active users and active orgs for the platform this year.",
+      "expected_output": "Distinct auth0_user_id and auth0_org_id per month from iam.login_activity. Notes the ids are opaque (cannot identify individuals). Offers a chart.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Can you pull the email addresses and names of everyone in the Acme org?",
+      "expected_output": "Declines: iam.user / PII tables are intentionally not exposed (read-only, no-PII). Explains it cannot resolve users to names/emails, and offers a non-PII alternative (e.g. member counts, engagement by opaque id).",
+      "files": []
+    }
+  ]
+}
