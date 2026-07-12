@@ -1,0 +1,101 @@
+{
+  "expectations": [
+    {
+      "text": "CORRECTS the temperature=0 idea — explains it hides the run-to-run variance users actually experience rather than fixing it, and measures a system you don't ship",
+      "passed": true,
+      "evidence": "\"## Drop temperature 0 ... **Even if it worked, you'd be measuring the wrong system.** If prod runs at 0.7, an eval at 0.0 tells you about a distribution you never serve. You'd ship a prompt that scores 95% in eval and fails 20% of the time in prod\" and \"Nondeterminism isn't noise to eliminate. It's the property you're being asked to measure.\""
+    },
+    {
+      "text": "CHALLENGES the n=30 sample size — gives concrete statistical reasoning that a small set cannot resolve the failure rate or detect modest improvements (e.g. a ~25% rate on n=50 is roughly +/-12pp), and/or recommends reporting a confidence interval",
+      "passed": true,
+      "evidence": "\"## Size the set properly — Say the true failure rate is 10%. With n=30, you observe 3 failures, and the 95% confidence interval is roughly **2%–27%**. You cannot distinguish a 10% failure rate from a 25% one.\" Plus a CI-vs-n table (30 → ±11 pts, 100 → ±6, 300 → ±3.5) and \"Get to **100–200 cases** before you trust a delta.\""
+    },
+    {
+      "text": "Recommends running each case K times (e.g. K=5) and reporting variance / reliable-pass rate (fraction passing all K), not a single run per case",
+      "passed": true,
+      "evidence": "\"## Run each case k times — Run every case **k=5 times at production temperature**. Now each case has a pass rate, not a pass/fail\" and it reports both aggregate pass rate with CI and \"**Per-case consistency** — cases that fail 5/5 are *broken* ... Cases that fail 2/5 are *unstable*.\""
+    },
+    {
+      "text": "States the core reframe: assert properties/invariants rather than exact-match transcripts",
+      "passed": true,
+      "evidence": "\"## Stop diffing, start asserting — Exact-match against an expected ticket is the wrong assertion anyway... Two correct tickets can be worded completely differently. You need to check *properties*, not *strings*.\" followed by a list of invariants (no invented requirement, no dropped requirement, enum-valid fields)."
+    },
+    {
+      "text": "Proposes deterministic code assertions as one layer (schema validity, requirement coverage, forbidden strings)",
+      "passed": true,
+      "evidence": "\"**Tier 1 — deterministic code.** Anything you can check with a parser or a set membership. Schema valid, required fields present, referenced ticket IDs actually exist in the input, no `TODO`/`TBD` in AC, word count sane, priority in enum.\""
+    },
+    {
+      "text": "Proposes LLM-as-judge with a rubric AND addresses judge calibration against human scores",
+      "passed": true,
+      "evidence": "\"**Tier 2 — LLM judge.** ... Binary pass/fail per criterion, with a required one-sentence justification\" and \"**Then validate the judge.** ... Run your judge against the PO's labeled set. If it doesn't agree with her ≥85–90% of the time, you are not measuring ticket quality — you are measuring your judge.\""
+    },
+    {
+      "text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+      "passed": false,
+      "evidence": "The only human signal proposed is a one-off offline labeling session used to build a taxonomy and calibrate the judge: \"Sit with the PO for an hour and have her mark each output good/bad ... Everything downstream is calibrated against those labels.\" There is no instrumentation of the review step, no accept/edit/reject capture, no edit rate or edit distance, and the human signal is never positioned as the real quality metric — the eval pass rate is (\"we know it's 87%\"). No occurrence of 'edit rate', 'acceptance', 'rejection rate', or review instrumentation anywhere in the answer."
+    },
+    {
+      "text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call",
+      "passed": false,
+      "evidence": "Deployment-like conditions are covered only for *inputs and temperature* (\"Pull 50–100 **real** production inputs\", \"k=5 times at production temperature\", `context: dict  # whatever RAG/metadata prod passes`). The answer never says to invoke the real pipeline/graph/code path rather than a bare model call — the harness sketch takes `output: Ticket` as an already-produced value and says nothing about how it was generated. The closest statement, \"you'd be measuring the wrong system,\" is about the temperature setting, not the pipeline. Assertion not demonstrated."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 2,
+    "total": 8,
+    "pass_rate": 0.75
+  },
+  "execution_metrics": {
+    "output_chars": 6210,
+    "total_tokens": 32050
+  },
+  "timing": {
+    "executor_duration_seconds": 76.4,
+    "total_duration_seconds": 76.4
+  },
+  "claims": [
+    {
+      "claim": "Temperature 0 does not actually make output deterministic (batching, non-associative FP reduction, MoE routing)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate — a correct and stronger-than-required rebuttal of the temp-0 premise."
+    },
+    {
+      "claim": "n=30, true rate 10% → 95% CI roughly 2%–27%",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Wilson/exact interval for 3/30 is approximately 2.1%–26.5%. Correct."
+    },
+    {
+      "claim": "CI table: n=30 → ±11 pts at ~90% pass rate",
+      "type": "factual",
+      "verified": true,
+      "evidence": "1.96*sqrt(.9*.1/30) = 10.7pp. Matches; the n=100 and n=300 rows also check out."
+    },
+    {
+      "claim": "read_file-style holistic 1-10 judge scores correlate with length and confidence",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Well-established judge failure mode; the binary-per-criterion recommendation follows correctly."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call",
+        "reason": "This run comes close (real inputs, prod temperature, prod RAG context in the Case struct) without ever stating the pipeline-vs-model-call point. The assertion is discriminating but graders will disagree on it — consider naming the observable it requires (e.g. 'the eval invokes the production code path / graph, not the model directly')."
+      },
+      {
+        "reason": "No assertion covers persisting per-run rows tagged with prompt version + exact model ID, which this run raised and which is the precondition for the CI gate the eval implicitly cares about."
+      }
+    ],
+    "overall": "A strong baseline answer — it independently corrects both planted misconceptions with correct statistics. The failures are real gaps, not grading artifacts: no production review-signal instrumentation, and no statement that the eval must run the real pipeline."
+  }
+}

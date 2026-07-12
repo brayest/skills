@@ -1,0 +1,19 @@
+{
+  "skill_name": "ai-compliance-evaluator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "healthcare-security-review-readiness",
+      "prompt": "we're about to put our LangGraph agent platform in front of a hospital system's security team next month. it generates dev tickets from requirement docs, runs on EKS, calls Bedrock. what are they going to ask us and what are we missing?",
+      "expected_output": "Findings identifying binding layers (HIPAA/HITRUST first, not ISO), the artifact gaps (system cards, data-flow diagram, eval harness, tracing, inventory), and a prioritized order. Should note HITRUST AI assessments and that data residency/PHI-in-prompts is the first question.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "iso-42001-necessary-or-not",
+      "prompt": "client's legal is asking whether we need ISO 42001 before they'll sign. do we? we're a small team shipping an internal AI tool for them, US only.",
+      "expected_output": "A clear NO with reasoning: 6-12 months of a running management system before Stage 2 is passable; ISO 42001 confers no legal obligation and no EU AI Act conformity; recommend AI RMF (free, non-certifiable) plus HIPAA/HITRUST evidence instead. Should not hedge into 'it depends' without a recommendation.",
+      "files": []
+    }
+  ]
+}

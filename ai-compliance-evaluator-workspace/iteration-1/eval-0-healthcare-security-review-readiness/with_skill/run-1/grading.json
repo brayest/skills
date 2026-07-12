@@ -1,0 +1,108 @@
+{
+  "eval_id": 0,
+  "eval_name": "healthcare-security-review-readiness",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+      "passed": true,
+      "evidence": "Opens with 'they will not ask about ISO 42001'. The 'What actually binds you' table is ordered HIPAA first ('Yes, and it's the only layer with teeth. There is no HIPAA AI rule and no AI carve-out'), HITRUST second ('Indirectly, and this is your leverage'), with AI RMF third ('Voluntary') and ISO 42001 explicitly 'No.'"
+    },
+    {
+      "text": "States that the first question will be about where client data / PHI goes (data flow and residency)",
+      "passed": true,
+      "evidence": "'They will ask two questions — where does our data go and how do you know the AI isn't making things up'. Reinforced by 'Is there a data-residency clause in the MSA/BAA?' as question #1 of the clarifying set, and 'The single artifact their security team most wants' being the data-flow diagram with the residency boundary drawn on it."
+    },
+    {
+      "text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)",
+      "passed": true,
+      "evidence": "Names both: 'They won't demand you hold a HITRUST AI Security cert (44 controls, expensive, slow)' and \"HITRUST's *AI Risk Management Assessment* is **scored against NIST AI RMF 1.0 and ISO 23894**\". Also references bolting the AI Security assessment onto their existing e1/i1/r2."
+    },
+    {
+      "text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant",
+      "passed": true,
+      "evidence": "F2: 'Bedrock is HIPAA-eligible under the AWS BAA (self-serve via AWS Artifact — verify against the live HIPAA Eligible Services page)' plus the eligibility≠compliance point: 'BAA coverage varies by endpoint, feature, and sub-processor... logging, telemetry, preview APIs, and third-party tracing layers are commonly out of BAA scope even when the base model endpoint is in scope.' Artifact table includes 'Confirm the AWS BAA + Bedrock HIPAA eligibility'."
+    },
+    {
+      "text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+      "passed": true,
+      "evidence": "The 'Artifacts you're missing' table names 8 of the 8 listed items: 'Data-flow diagram with the residency boundary', 'AI system inventory' (GOVERN 1.6), 'System cards (one per agent)', 'Eval report' (MEASURE 2.1, 2.3), 'Red-team report (prompt injection)' (MEASURE 2.7), 'Event logs / decision traces', 'Incident log + response plan' (MANAGE 4.3), 'Impact assessment per agent' (ISO/IEC 42005:2025) — each with an effort estimate."
+    },
+    {
+      "text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+      "passed": true,
+      "evidence": "F5 is tagged 'P0 — the highest-value missing thing on this page': 'You need a golden set, an output-accuracy number, and testing under deployment-like conditions... If exactly one item on this list gets done before next month, it's this one.'"
+    },
+    {
+      "text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary",
+      "passed": true,
+      "evidence": "F2 (P0): 'The moment you add Langfuse/LangSmith/any SaaS tracer, the trace store holds prompt content — i.e. PHI — and must sit inside the same compliance boundary as the model call. A SaaS observability vendor does not survive this unless separately BAA-covered.' Fix: 'self-hosted trace store, inside the boundary. Non-negotiable.'"
+    },
+    {
+      "text": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+      "passed": true,
+      "evidence": "'What to do, in order' has four explicit horizons: 'This week (days)', 'Before the review (weeks)', 'Before production', and 'Not now: ISO 42001 certification. Your own HITRUST AI Security certification. EU AI Act work.' Findings are additionally tagged P0/P1/P2."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "executor_duration_seconds": 89.8,
+    "total_duration_seconds": 89.8,
+    "total_tokens": 55630
+  },
+  "claims": [
+    {
+      "claim": "HITRUST's AI Risk Management Assessment is scored against NIST AI RMF 1.0 and ISO 23894",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistent with HITRUST's published AI RM Assessment, which maps to NIST AI RMF 1.0 and ISO/IEC 23894. Correctly distinguished from the AI Security Assessment (44 controls), which is the security-control-based one."
+    },
+    {
+      "claim": "OWASP's Agentic Security Initiative merges LLM01 and LLM06 into ASI01 'Agent Goal Hijack'",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Cannot be verified from the outputs. OWASP's agentic threat work is fast-moving and the exact identifier 'ASI01' is presented with more confidence than the answer's own epistemic hedging elsewhere ('don't take my word'). Flagged as unverifiable, not as wrong."
+    },
+    {
+      "claim": "Model cards and datasheets are the only two artifacts with genuinely standardized formats",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Consistent and correctly attributed (Mitchell et al.; Gebru et al.), and the answer usefully warns 'Don't let anyone sell you a template as a standard' — an honest, falsifiable claim rather than vendor-speak."
+    },
+    {
+      "claim": "The system is not FDA/SaMD-regulated today because it emits dev tickets, not clinical recommendations",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct scoping given the prompt, and the answer flags the boundary condition ('could we point this at your clinical modules?') rather than asserting blanket non-applicability."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+        "reason": "Non-discriminating. The baseline also led with HIPAA/PHI — any competent model handed 'hospital system' will. The word 'HITRUST' does the real work here, but the assertion's OR-form lets a HIPAA-only answer pass. Split it: one assertion for HIPAA-first framing, a separate one for correctly ranking HITRUST as the hospital's actual currency."
+      },
+      {
+        "assertion": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+        "reason": "Weakly discriminating as written. Any ranked list technically satisfies 'prioritized'. Tighten to require at least two distinct time horizons AND an explicit 'not now / do not do' list — the with-skill run's 'Not now: ISO 42001 certification' is the genuinely valuable behavior (telling the client what NOT to spend money on) and no assertion currently rewards it."
+      },
+      {
+        "reason": "No assertion covers prompt injection / untrusted-document ingestion, which both runs independently identified as a top-tier risk and which is the single most obvious technical question a security team will ask a doc-ingesting agent. It should be an assertion."
+      },
+      {
+        "reason": "No assertion covers the least-agency / HIPAA minimum-necessary tool-binding audit. The with-skill run's strongest analytical move — 'one control satisfying three frameworks: OWASP LLM06, OWASP ASI01, and HIPAA minimum-necessary' — goes entirely unrewarded, while the baseline only gestured at 'minimum necessary' as a bullet."
+      }
+    ],
+    "overall": "The eval is discriminating overall (8/8 vs 6/8) but two of the eight assertions carry all the signal (HITRUST AI assessments, eval-harness-as-P0). Several assertions are things any strong model produces unprompted. Add assertions for prompt-injection defense and least-agency tool scoping to widen the gap."
+  }
+}

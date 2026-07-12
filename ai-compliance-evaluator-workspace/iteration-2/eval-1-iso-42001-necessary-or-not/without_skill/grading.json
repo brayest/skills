@@ -1,0 +1,99 @@
+{
+  "eval_name": "eval-1-iso-42001-necessary-or-not",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+      "passed": true,
+      "evidence": "'**No.** Nothing about your situation legally requires ISO/IEC 42001. It's a voluntary management-system standard \u2014 no US law, and no EU law, mandates it... That's a negotiation, not a compliance problem.'"
+    },
+    {
+      "text": "CORRECTS the client counsel's claim that ISO 42001 confers EU AI Act coverage \u2014 states it gives no legal presumption of conformity",
+      "passed": true,
+      "evidence": "'**ISO 42001 is not a conformity route for the AI Act.** Certification to 42001 gives you **zero presumption of conformity**. Presumption of conformity comes only from *harmonized standards* cited in the Official Journal \u2014 those are being drafted by CEN-CENELEC JTC 21 and are not the same document.' Also notes the Act doesn't apply today (Art. 2 territorial scope)."
+    },
+    {
+      "text": "CORRECTS the 'fast-track with money' claim \u2014 explains the gate is ACCUMULATED EVIDENCE of a running management system (internal audits, management reviews, monitoring records over ~6-12 months), which spending cannot compress",
+      "passed": true,
+      "evidence": "'Certification requires an AIMS that has actually been *operating* and producing records: risk register, AI impact assessments, defined roles, supplier controls, at least one internal audit cycle and one management review, then a Stage 1... and Stage 2... You cannot buy the evidence trail; you have to run it.' Table: '\"Throw money at it\" | Compresses consultant hours, not audit cycles or the operating-evidence window'; 'No existing ISMS | ~9\u201312 months'."
+    },
+    {
+      "text": "Does NOT describe NIST AI RMF and ISO 42001 as having a lineage/parent-child relationship (e.g. 'AI RMF is the structure 42001 is built on') \u2014 treats them as independently authored and crosswalked",
+      "passed": true,
+      "evidence": "No derivation claim is made. ISO 42001 is described as 'an AIMS (governance/management system, ~ISO 27001 in shape)' \u2014 a shape comparison to 27001, not a lineage from AI RMF. NIST AI RMF is introduced independently as a US-native alternative."
+    },
+    {
+      "text": "Recommends NIST AI RMF as the immediate free alternative AND states it is non-certifiable",
+      "passed": false,
+      "evidence": "The first half holds \u2014 '**NIST AI RMF alignment** \u2014 free, US-native, the thing US counsel actually recognizes. Map your practices to Govern/Map/Measure/Manage and hand them a 3\u20135 page summary.' But the answer never states that AI RMF is non-certifiable; the words 'non-certifiable', 'no certification', or any equivalent do not appear in connection with AI RMF. The conjunctive assertion is not met."
+    },
+    {
+      "text": "Asks or flags the question that actually determines the answer: whether the tool touches regulated data (PHI/PII) or makes decisions about people \u2014 i.e. whether a layer with real teeth applies",
+      "passed": true,
+      "evidence": "'The high-risk machinery only bites in specific domains (employment/HR screening, credit, education, biometrics, critical infrastructure, etc.). **If your tool touches hiring or worker evaluation, tell me \u2014 that changes the answer.**' This flags the decisions-about-people hinge explicitly as answer-changing. (It never raises PHI/regulated data, so only one branch of the OR is satisfied.)"
+    },
+    {
+      "text": "Names the concrete evidence package to offer the client instead of a certificate (e.g. data-flow diagram, system card, eval results, security controls)",
+      "passed": true,
+      "evidence": "'Give them the substance directly:' lists 'NIST AI RMF alignment... 3\u20135 page summary', '**A model/system card** for the tool: intended use, out-of-scope uses, data sources, known failure modes, eval results', '**Data handling commitments in the contract**: no training on their data, retention limits, subprocessor list', '**Human oversight and an acceptable-use policy**', '**Eval/testing evidence** \u2014 even a modest golden-set eval report beats a certificate', '**SOC 2 Type II**'. (No data-flow diagram, but the assertion's list is exemplary.)"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "total": 7,
+    "pass_rate": 0.86
+  },
+  "execution_metrics": {
+    "total_tokens": 30944,
+    "output_chars": 5284,
+    "output_files": [
+      "outputs/answer.md"
+    ]
+  },
+  "timing": {
+    "executor_duration_seconds": 57.4,
+    "total_duration_seconds": 57.4
+  },
+  "claims": [
+    {
+      "claim": "EU AI Act Art. 2 territorial scope means a US-only company with a US-only client has no obligations",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct statement of the extraterritoriality test (output used in the EU)."
+    },
+    {
+      "claim": "$40k-$100k+ all-in for a small team, ~4-6 months with an existing ISMS, ~9-12 months without",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Plausible and consistent with market pricing; presented as ranges, not certainties."
+    },
+    {
+      "claim": "An internal productivity AI tool is 'very likely limited- or minimal-risk under Annex III'",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Slightly muddled: Annex III is the list of *high-risk* use cases; limited/minimal risk is the residual category outside Annex III, not a classification 'under Annex III'. The conclusion is right, the citation is loose."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Does NOT describe NIST AI RMF and ISO 42001 as having a lineage/parent-child relationship",
+        "reason": "Negative assertion \u2014 it passes by default whenever the answer simply doesn't discuss the relationship at all. Both runs passed without ever being tested. Consider making it positive: 'states that ISO 42001 and NIST AI RMF are independently authored and related only by crosswalk' \u2014 which forces the model to demonstrate the knowledge rather than avoid the error."
+      },
+      {
+        "assertion": "Asks or flags the question that actually determines the answer: whether the tool touches regulated data (PHI/PII) or makes decisions about people",
+        "reason": "The OR makes this passable on one branch. without_skill flagged only the decisions-about-people branch (and only in an EU AI Act risk-classification frame, not as 'what determines whether 42001 matters'), while with_skill named both and tied PHI to 'the layer with teeth'. Splitting into two assertions, or requiring the framing 'this is what determines whether a binding layer applies', would separate them properly."
+      },
+      {
+        "reason": "No assertion checks whether the answer distinguishes 'is this in their written vendor policy or is it counsel's preference' \u2014 both runs independently landed on this as the actual next action, which suggests it's a real outcome worth scoring."
+      }
+    ],
+    "overall": "The two 'CORRECTS the misconception' assertions are the strongest in the set \u2014 both are genuinely hard to pass by accident. The lineage assertion is weak (passes by silence) and the regulated-data assertion is weakened by its OR."
+  }
+}

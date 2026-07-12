@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "eval_name": "measuring-nondeterministic-output-quality",
+  "prompt": "our PO says the generated tickets are sometimes wrong but she can't tell me how often. how do I actually measure this — the output is different every run so I can't just diff against expected. I was going to set temperature to 0 and build a set of ~30 test cases so the numbers are stable.",
+  "assertions": [
+    {"text": "CORRECTS the temperature=0 idea — explains it hides the run-to-run variance users actually experience rather than fixing it, and measures a system you don't ship"},
+    {"text": "CHALLENGES the n=30 sample size — gives concrete statistical reasoning that a small set cannot resolve the failure rate or detect modest improvements (e.g. a ~25% rate on n=50 is roughly +/-12pp), and/or recommends reporting a confidence interval"},
+    {"text": "Recommends running each case K times (e.g. K=5) and reporting variance / reliable-pass rate (fraction passing all K), not a single run per case"},
+    {"text": "States the core reframe: assert properties/invariants rather than exact-match transcripts"},
+    {"text": "Proposes deterministic code assertions as one layer (schema validity, requirement coverage, forbidden strings)"},
+    {"text": "Proposes LLM-as-judge with a rubric AND addresses judge calibration against human scores"},
+    {"text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric"},
+    {"text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call"}
+  ]
+}

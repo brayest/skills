@@ -1,0 +1,109 @@
+{
+  "eval_id": 0,
+  "eval_name": "residency-boundary-aws-to-azure-tenant",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) — Bedrock cannot serve the data-bearing calls",
+      "passed": true,
+      "evidence": "§2 table row: '**Model endpoint** | Bedrock | **Azure AI Foundry** endpoint in *their* subscription, private endpoint, public network access disabled | Prompts and completions are client data. A PrivateLink-to-your-Bedrock story still terminates in *your* AWS account's region — that is data leaving their tenant. This is the item with no workaround.' Also the lede: 'Bedrock does not move — you replace it, because there is no way to put a Bedrock endpoint inside an Azure subscription.'"
+    },
+    {
+      "text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data",
+      "passed": true,
+      "evidence": "§2: '**Trace store** | wherever it is now | **Self-hosted in-tenant.** No SaaS observability ... | Spans carry the raw prompts. This is the #1 silently-violated boundary.' The boundary diagram in §1 places 'Trace store (self-hosted Langfuse/Phoenix + OTLP)' inside the tenant."
+    },
+    {
+      "text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)",
+      "passed": true,
+      "evidence": "§2: '**Log destinations** | CloudTrail / Bedrock invocation logs → your bucket | **Foundry diagnostic settings + Activity Log + AKS control-plane logs → immutable Storage in their tenant** | Shipping model-invocation logs to a vendor-owned aggregation account moves client data across the boundary *through the telemetry channel*.'"
+    },
+    {
+      "text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause",
+      "passed": true,
+      "evidence": "§2 trace-store row names vendors by name: 'No SaaS observability — no Langfuse Cloud, no Datadog LLM Obs, no vendor-side OTLP collector'."
+    },
+    {
+      "text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)",
+      "passed": true,
+      "evidence": "§3 'What can stay on AWS' table lists dev/CI tier (SYNTHETIC data only), demo tier, 'CI pipeline: build, SBOM, vuln scan, cosign signing, eval + red-team gates — CI never sees client data', and 'Terraform/Terragrunt + Helm charts, prompts, agent code, eval golden sets, red-team corpus'. The gating condition is stated: 'Only if the tier structurally cannot hold client data — enforced twice'."
+    },
+    {
+      "text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change",
+      "passed": true,
+      "evidence": "§4: 'If you built on Kubernetes with a provider-bindings layer, this is a values-layer port, not a rewrite' — then enumerates only the bindings that change (bedrock-runtime → Foundry SDK, IRSA → AKS Workload Identity, S3 → Blob, Secrets Manager → Key Vault) and what does not: 'Unchanged: agent loop, prompts, schema validation, capability manifests, redaction gateway, business logic.'"
+    },
+    {
+      "text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database",
+      "passed": true,
+      "evidence": "§1: 'The compliance boundary is the client's Azure tenant, and the rule is: every component that touches client data lives inside it.' The lede makes the contrast explicit: 'that list is longer than people expect, because it includes the model endpoint, the trace store, and the log destinations.'"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 8847,
+    "total_tokens": 53771
+  },
+  "timing": {
+    "executor_duration_seconds": 110.8,
+    "total_duration_seconds": 110.8
+  },
+  "claims": [
+    {
+      "claim": "Bedrock's Global cross-region inference has an Azure analog in Global vs. Data Zone vs. Regional deployments; a residency-constrained client must use Regional only",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Azure OpenAI/Foundry does offer Global, Data Zone and Regional deployment types with different processing-locality guarantees. The recommendation (Regional only) is the correct one for a tenant-residency clause and is a non-obvious control most answers omit."
+    },
+    {
+      "claim": "BAA/DPA coverage varies by endpoint and feature; preview features and telemetry are commonly out of scope",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate and load-bearing caveat — Azure's compliance scope is per-service/per-feature, and preview features are routinely excluded. Correctly framed as 'get it in writing' rather than asserted as a specific guarantee."
+    },
+    {
+      "claim": "Many 'no data leaves our tenant' clauses actually mean 'infrastructure we own and control', which an AWS account inside the client's org would satisfy",
+      "type": "quality",
+      "verified": true,
+      "evidence": "§5 challenges the premise of the prompt with a concrete, cheaper alternative reading ('an AWS account inside their organization ... Bedrock stays, the port collapses to a deploy-target change'). This is a legitimate and material architectural challenge, not a dodge — it is explicitly bounded ('If the clause is genuinely Azure, our subscription, our EA — then §2 is the real scope')."
+    },
+    {
+      "claim": "PII detection should run in redact mode, not block mode",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Justified in-line ('false positives teach the team to route around the control'). Reasonable operational judgment, stated as a recommendation rather than a requirement."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "This eval is NON-DISCRIMINATING as currently written: the baseline (without_skill) run passed all 7 assertions. A strong model already knows that inference, traces, and payload-bearing logs move, and that CI/IaC/code stay. To discriminate, the assertions need to reach the controls the baseline actually missed."
+      },
+      {
+        "assertion": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)",
+        "reason": "Both runs pass, but only the with_skill run names the OFF-BY-DEFAULT enablement gap on the Azure side (Foundry diagnostic settings off by default, Foundry public network access ON by default, AKS control-plane logs off, Storage WORM off). Consider splitting out an assertion like 'Identifies that the in-tenant audit surfaces are off by default and must be explicitly enabled (e.g. Foundry diagnostic settings, AKS control-plane logs), and that log immutability (WORM/Object Lock) is not on by default' — that is the assertion the baseline would fail."
+      },
+      {
+        "reason": "No assertion covers the single-region-vs-global inference trap (Bedrock cross-region inference profiles / Azure Global vs Data Zone vs Regional deployments). This is a real residency breach that silently exists in a default deployment, and only the with_skill run caught it ('Regional deployment only. Never Global.'). Worth an assertion — it is hard to pass without the domain knowledge."
+      },
+      {
+        "reason": "No assertion covers challenging the premise (tenant vs. cloud vs. region). Both runs did it, so it would not discriminate, but it is arguably the highest-value output of the task and currently goes unmeasured — which means a future regression that drops it would be invisible."
+      },
+      {
+        "assertion": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)",
+        "reason": "Passes on a bare list. Consider requiring that the answer states HOW 'no client data' is enforced rather than assumed (e.g. data-class enforcement at the API + no network route/credential to client systems, per the with_skill run), and that eval golden sets built from client documents ARE client data. Both runs happened to raise this, but the assertion as written would pass on a list alone."
+      }
+    ],
+    "overall": "Both configurations scored 7/7 — this eval currently has zero discriminating power. The assertions test knowledge a strong base model already has (what moves, what stays). The with_skill answer is materially deeper (off-by-default Azure enablement checklist, WORM/immutability, Regional-only deployments, CMK-as-offboarding-lever, alarm set, live-proof demo), and none of that is measured. Recommend adding 2-3 assertions targeting default-state/enablement knowledge and the global-inference residency trap."
+  }
+}

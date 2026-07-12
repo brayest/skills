@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    {"text": "Names the lost-in-the-middle effect as the cause of the support bot forgetting the account number", "passed": true, "evidence": "\"Cause: lost-in-the-middle. Claude (like every long-context model) attends strongly to the start and end of the context window and weakly to content buried in the middle.\""},
+    {"text": "Recommends a fact block re-anchored at end of context, warns against summarization", "passed": true, "evidence": "Gives explicit 'case block' example re-anchored at end of context every turn, and a dedicated 'trap to avoid' paragraph on summarization being lossy."},
+    {"text": "Names the vague-adjective pattern for the CI bot", "passed": true, "evidence": "\"Cause: vague-adjective prompting... 'Carefully,' 'potential,' 'concerning' have no shared, checkable definition\""},
+    {"text": "Recommends checkable rules AND structured category gating", "passed": true, "evidence": "Gives numbered rule examples plus a JSON tool schema with named categories and 'fail the build only on categories you've explicitly named as blocking'"}
+  ]
+}

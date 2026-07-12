@@ -1,0 +1,105 @@
+{
+  "expectations": [
+    {
+      "text": "CATCHES THE PLANTED GAP: passing a guardrail ID as a call parameter is default-ALLOW - a code path can omit it. Recommends conditioning the IAM permission on bedrock:GuardrailIdentifier so an un-guardrailed call is DENIED",
+      "passed": true,
+      "evidence": "'A guardrail ID passed on every `InvokeModel` call is a guardrail that a bug, a new code path, a debugging shortcut, or a compromised container simply doesn't pass - and the call still succeeds. That is a default-allow control.' Followed by a concrete IAM policy with 'Condition: {StringEquals: {bedrock:GuardrailIdentifier: <guardrail-arn>:<version>}}', plus pinning the guardrail version."
+    },
+    {
+      "text": "CATCHES THE PLANTED GAP: NetworkPolicy is bypassable by a pod with hostNetwork: true, and recommends Pod Security Admission (restricted) and/or Kyverno/OPA admission control to close it",
+      "passed": true,
+      "evidence": "'A pod with `hostNetwork: true` shares the node's network namespace and **NetworkPolicy does not apply to it** - every egress rule is void.' Remedy: '**Pod Security Admission** in `restricted` mode on the agent namespaces (forbids `hostNetwork`, `hostPID`, `hostIPC`, privileged, host ports)' plus '**Kyverno/OPA** as the belt to PSA's braces'."
+    },
+    {
+      "text": "Names audit surfaces that are OFF BY DEFAULT and must be explicitly enabled - specifically Bedrock model invocation logging AND CloudTrail data events",
+      "passed": true,
+      "evidence": "Table titled 'The audit surfaces that are off by default': 'Bedrock **model invocation logging** | full request/response payloads | **off**' and 'CloudTrail **data events** (Bedrock agent-runtime, S3) | what the agent runtime actually did | **off**'. Plus 'Default CloudTrail tells you an invocation *happened* - not what the agent did.'"
+    },
+    {
+      "text": "Notes EKS control-plane logs are off by default and should be enabled",
+      "passed": true,
+      "evidence": "Same table: '**EKS control-plane logs** (all five: api, audit, authenticator, controllerManager, scheduler) | cluster admin actions, `kubectl exec` | **off**'."
+    },
+    {
+      "text": "Recommends S3 endpoint policy with aws:ResourceAccount / aws:ResourceOrgID condition to block writes to attacker-owned buckets",
+      "passed": true,
+      "evidence": "'**S3 gateway endpoint policy with an `aws:ResourceAccount` / `aws:ResourceOrgID` condition.** This is the one people miss. Tight IAM on *your* buckets does nothing to stop `PutObject` to an *attacker-owned* bucket - S3 is a first-class exfiltration channel and PrivateLink alone doesn't close it.'"
+    },
+    {
+      "text": "Identifies DNS as an exfiltration channel requiring restriction and/or query logging",
+      "passed": true,
+      "evidence": "'**DNS is an exfiltration channel.** An agent that can resolve arbitrary names can tunnel data out in queries alone, without ever opening a TCP connection your NetworkPolicy would see. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on.'"
+    },
+    {
+      "text": "Recommends model-ARN allowlisting layered across IAM role, SCP, and VPC endpoint policy",
+      "passed": true,
+      "evidence": "'**Model allowlisting, three layers deep.** `bedrock:InvokeModel` scoped to named model ARNs in the role; an **SCP** allowlisting model ARNs + regions org-wide (so a misconfigured account can't un-govern it); the endpoint policy repeating the list.' The Bedrock endpoint policy is separately described as 'the third net under the IAM model-ARN allowlist'."
+    },
+    {
+      "text": "Warns that cross-region inference profiles can move the processing region, and that invocation logs record in the SOURCE region so logs are not evidence for a residency claim",
+      "passed": true,
+      "evidence": "'**Cross-region inference profiles.** Bedrock inference profiles can route processing to another region, and newer profiles often default to it. Worse: CloudTrail and invocation logs record in the *source* region regardless - so the logs look consistent with a single-region story even when it isn't true. **The profile configuration is the evidence; the logs are not.**' Both clauses present."
+    },
+    {
+      "text": "Offers a concrete live demonstration for the reviewer (e.g. exec into an agent pod, show outbound curl / external DNS blocked)",
+      "passed": true,
+      "evidence": "'**Two live proofs**, thirty seconds: shell into an agent pod, `curl https://example.com` -> blocked; resolve an external name -> blocked. This lands the argument better than any document.'"
+    },
+    {
+      "text": "Does not simply validate the user's existing three controls as sufficient",
+      "passed": true,
+      "evidence": "Opening line: 'Your three controls are the right three, but as described, **two of them are opt-out and one is probably wide open.**' Each is then dismantled: guardrail param = default-allow; NetworkPolicy = hostNetwork bypass; PrivateLink != a scoped endpoint policy ('Your VPC endpoint policies are probably the default - which allows everything')."
+    }
+  ],
+  "summary": {
+    "passed": 10,
+    "failed": 0,
+    "total": 10,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 9432,
+    "total_tokens": 49140
+  },
+  "timing": {
+    "executor_duration_seconds": 83.9,
+    "total_duration_seconds": 83.9
+  },
+  "claims": [
+    {
+      "claim": "Bedrock guardrails can also be attached via an AWS Organizations policy, making 'every model call passes a guardrail' an org invariant",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Plausible and appropriately hedged; the answer also instructs the reader to verify the bedrock:GuardrailIdentifier condition-key name against the current Bedrock service authorization reference before shipping - correct epistemic hygiene for a moving API surface."
+    },
+    {
+      "claim": "Bedrock API keys / bearer tokens (bedrock:BearerTokenType) should be SCP-denied because they recreate the static-credential problem IRSA/Pod Identity avoids",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct threat reasoning, on-question, and not covered by any assertion."
+    },
+    {
+      "claim": "Invocation and CloudTrail logs record in the SOURCE region even when a cross-region inference profile moves processing elsewhere",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct, and the single strongest insight in the answer - it invalidates the evidence most teams would present for a residency claim."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "No assertion covers the agent's own TOOLS as the primary exfil channel (model-supplied URLs / buckets / recipients vs. a server-side allowlist). The without_skill run leads with it and calls it the #1 real path; with_skill largely defers it to the sibling skill. For a question literally asking 'what stops the agent from sending data somewhere it shouldn't', that is a notable blind spot in the assertion set."
+      },
+      {
+        "assertion": "Names audit surfaces that are OFF BY DEFAULT and must be explicitly enabled - specifically Bedrock model invocation logging AND CloudTrail data events",
+        "reason": "As worded, an answer that merely lists the two surfaces as 'logs to ship' passes without ever conveying they are off by default - which is the discriminating insight. Tighten it to require that the off-by-default status be stated."
+      }
+    ],
+    "overall": "The two planted-gap assertions are the sharpest in the set and cleanly separate the runs. Add a tool-egress assertion and tighten the off-by-default wording."
+  }
+}

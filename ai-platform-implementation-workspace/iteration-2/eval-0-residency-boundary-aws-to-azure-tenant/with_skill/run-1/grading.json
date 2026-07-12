@@ -1,0 +1,96 @@
+{
+  "expectations": [
+    {
+      "text": "States the model endpoint must move inside the tenant (Azure AI Foundry / Azure OpenAI)",
+      "passed": true,
+      "evidence": "Table row: 'Model endpoint | Bedrock | **Azure AI Foundry deployment in their subscription**, Private Link, public network access disabled | The unavoidable one. Bedrock cannot stay.'"
+    },
+    {
+      "text": "States log and audit destinations must also live inside the tenant, not just the app/DB/traces",
+      "passed": true,
+      "evidence": "'Every component that sees client data - **including the model endpoint, the trace store, and the log destinations** - lives inside it.' Table moves Bedrock invocation logging -> AI Foundry diagnostic settings -> in-tenant Storage; CloudTrail -> Azure Activity Log -> immutable Storage; S3 Object Lock -> Azure Storage locked immutability policy. Bottom line repeats 'all log destinations move'."
+    },
+    {
+      "text": "CATCHES THE PLANTED GAP: identifies the LangGraph postgres CHECKPOINTS as a client-data store that must move and that retains full document content (ideally noting no default TTL / needs a purge job)",
+      "passed": true,
+      "evidence": "'Your LangGraph Postgres checkpointer is an undeclared data store. Checkpoints hold full message history - every document you fed the graph, every model response, indefinitely, with no default TTL... It is squarely inside the boundary, it moves, and while you're moving it: give it a TTL and a purge job.' All three parts hit: must move, retains full content, no TTL / needs purge job."
+    },
+    {
+      "text": "Does not simply accept the user's 'we're covered on traces' framing - probes what else holds payloads",
+      "passed": true,
+      "evidence": "Opens by rejecting it: 'Self-hosted Langfuse is the right *type* of trace store, but it doesn't answer the question. The residency clause isn't about *who operates* the trace store, it's about *which tenant it runs in*... That's a real migration item, not a checkbox you've already ticked.' Then enumerates other payload holders (checkpointer, artifacts, log destinations, ClickHouse/Redis/blob substrate)."
+    },
+    {
+      "text": "Warns about Azure Global vs Regional/Data-Zone model deployment (the residency trap on the Azure side), or equivalently that the default deployment option may not be regionally bounded",
+      "passed": true,
+      "evidence": "'**Global vs. Regional deployment is the same trap as Bedrock cross-region inference.** Foundry model deployments default in ways that can process outside the region you promised... **Regional (or Data Zone) deployment, never Global**, and verify the deployment config rather than inheriting the default.'"
+    },
+    {
+      "text": "Identifies what CAN stay outside: artifacts containing no client data (CI/CD, images, IaC, source)",
+      "passed": true,
+      "evidence": "Dedicated 'What can stay on AWS' table: 'Source repos, CI, image build, cosign signing, SBOM - The **image** crosses the boundary, not data'; 'Terraform / Helm / policy-as-code'; eval golden sets if synthetic; dev/CI/demo tiers on synthetic data only."
+    },
+    {
+      "text": "Notes Azure BAA/data-use coverage must be re-established in writing rather than assumed from the AWS posture",
+      "passed": true,
+      "evidence": "'**HIPAA, if it's in scope**: Microsoft's BAA, not AWS's - re-verify the in-scope service list against the live page at decision time. Don't carry an AWS compliance claim across the move.' Residual telemetry export is also gated on 'explicit written agreement'."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 9485,
+    "total_tokens": 56152
+  },
+  "timing": {
+    "executor_duration_seconds": 110.8,
+    "total_duration_seconds": 110.8
+  },
+  "claims": [
+    {
+      "claim": "LangGraph Postgres checkpoints retain full message history indefinitely with no default TTL",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct - langgraph-checkpoint-postgres persists serialized channel state (the full message list) per thread and ships no TTL or eviction; purging is the caller's responsibility."
+    },
+    {
+      "claim": "Self-hosted Langfuse v3 requires Postgres + ClickHouse + Redis + a blob store, all of which must move into the tenant",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Matches Langfuse v3 architecture, and correctly treats the blob payload store as in-scope client data rather than an implementation detail."
+    },
+    {
+      "claim": "Azure has no SCP equivalent, so model allowlisting is a thinner control stack than on AWS (Azure Policy deny + RBAC scoped to deployment resources instead)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate, and unusually honest - it flags a control REGRESSION the migration introduces rather than claiming parity."
+    },
+    {
+      "claim": "Azure content filters / Prompt Shields are bound to the model deployment and applied server-side, so the caller cannot omit them (unlike Bedrock Guardrails)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct and materially useful - it is the exact inverse of the eval-1 planted gap, and the answer explicitly connects the two."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "No assertion covers Azure OpenAI's default abuse-monitoring retention (up to 30 days, possible Microsoft human review, requires a Limited Access application to disable). The without_skill run caught it and the with_skill run did not - it is a genuine residency violation that survives the entire migration, and the eval is currently blind to it."
+      },
+      {
+        "assertion": "Notes Azure BAA/data-use coverage must be re-established in writing rather than assumed from the AWS posture",
+        "reason": "The prompt never scopes HIPAA or PHI, so 'BAA' is ambiguous - the two runs pass this via quite different content (with_skill via a conditional HIPAA aside, without_skill via abuse-monitoring paperwork). Consider splitting it into a concrete assertion about Azure's data-use/retention terms specifically."
+      }
+    ],
+    "overall": "Assertions are discriminating and the planted-gap checks work as intended. Add an abuse-monitoring assertion - the strongest miss in the with_skill run currently goes uncaught."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "eval_id": 0,
+  "eval_name": "residency-boundary-aws-to-azure-tenant",
+  "prompt": "customer won't let any of their data leave their azure tenant, but we built everything on AWS/Bedrock. what actually has to move and what can stay? we're on LangGraph with postgres checkpointing, and we self-host langfuse already so I think we're covered on traces.",
+  "assertions": [
+    {"text": "States the model endpoint must move inside the tenant (Azure AI Foundry / Azure OpenAI)"},
+    {"text": "States log and audit destinations must also live inside the tenant, not just the app/DB/traces"},
+    {"text": "CATCHES THE PLANTED GAP: identifies the LangGraph postgres CHECKPOINTS as a client-data store that must move and that retains full document content (ideally noting no default TTL / needs a purge job)"},
+    {"text": "Does not simply accept the user's 'we're covered on traces' framing — probes what else holds payloads"},
+    {"text": "Warns about Azure Global vs Regional/Data-Zone model deployment (the residency trap on the Azure side), or equivalently that the default deployment option may not be regionally bounded"},
+    {"text": "Identifies what CAN stay outside: artifacts containing no client data (CI/CD, images, IaC, source)"},
+    {"text": "Notes Azure BAA/data-use coverage must be re-established in writing rather than assumed from the AWS posture"}
+  ]
+}

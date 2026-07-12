@@ -1,0 +1,90 @@
+{
+  "expectations": [
+    {
+      "text": "States the model endpoint must move inside the tenant (Azure AI Foundry / Azure OpenAI)",
+      "passed": true,
+      "evidence": "Table: 'Bedrock inference | **Must move** | Prompt + completion cross the boundary. Non-negotiable.' Names Azure OpenAI / Microsoft Foundry as the targets, with private endpoint and publicNetworkAccess: Disabled."
+    },
+    {
+      "text": "States log and audit destinations must also live inside the tenant, not just the app/DB/traces",
+      "passed": true,
+      "evidence": "'App logs, if you log prompts or tool I/O | **Must move** | Audit your log statements. CloudWatch is not their tenant.' Proof list: 'Diagnostic settings on the model endpoint -> Log Analytics workspace in their tenant'. Thinner than with_skill (no immutable audit sink, no platform audit trail), but the assertion is met."
+    },
+    {
+      "text": "CATCHES THE PLANTED GAP: identifies the LangGraph postgres CHECKPOINTS as a client-data store that must move and that retains full document content (ideally noting no default TTL / needs a purge job)",
+      "passed": true,
+      "evidence": "'Same trap applies to your Postgres checkpointer: LangGraph checkpoints are not \"state metadata,\" they're the serialized message history. That's the customer's data, verbatim.' Table: 'Postgres checkpointer | **Must move** | Checkpoints = full conversation state.' No TTL/purge-job note, but that clause is marked 'ideally' in the assertion."
+    },
+    {
+      "text": "Does not simply accept the user's 'we're covered on traces' framing - probes what else holds payloads",
+      "passed": true,
+      "evidence": "Leads with '## First, the correction - **Self-hosting Langfuse does not mean you're covered on traces.** Self-hosting is about *who operates the software*, not *where the bytes sit*.' Then inventories other payload holders: vector store, DLQs/queues/caches, app logs, third-party tool nodes."
+    },
+    {
+      "text": "Warns about Azure Global vs Regional/Data-Zone model deployment (the residency trap on the Azure side), or equivalently that the default deployment option may not be regionally bounded",
+      "passed": false,
+      "evidence": "No mention of Azure deployment types (Global / Regional / Data Zone), nor that the default deployment option may process outside the promised region. Nearest content is a different concern - whether Foundry proxies Anthropic models to Anthropic-managed infra ('verify where inference actually executes') - plus a generic 'Azure Policy denying resource creation outside the approved region/subscription', which governs where resources are CREATED, not where a deployment PROCESSES. The Azure-side residency trap is not raised."
+    },
+    {
+      "text": "Identifies what CAN stay outside: artifacts containing no client data (CI/CD, images, IaC, source)",
+      "passed": true,
+      "evidence": "'Can stay' rows: 'CI/CD, container registry, IaC + Terraform state | **Can stay** | No customer data'; 'Prompt registry / prompt versions'; 'Your LangGraph source, your Helm charts | **Can stay** | Code isn't data.'"
+    },
+    {
+      "text": "Notes Azure BAA/data-use coverage must be re-established in writing rather than assumed from the AWS posture",
+      "passed": true,
+      "evidence": "Gotcha #1: 'By default Azure OpenAI retains prompts and completions for up to 30 days for abuse monitoring, with possible Microsoft human review... You must apply for **Limited Access / modified abuse monitoring** (a Microsoft application form) to disable it.' Proof list requires 'Written confirmation of modified abuse monitoring'. That is Azure data-use coverage re-established in writing rather than assumed from the AWS posture. The literal term 'BAA' is absent (HIPAA is never scoped in the prompt) but the substance is squarely there."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "total": 7,
+    "pass_rate": 0.86
+  },
+  "execution_metrics": {
+    "output_chars": 7919,
+    "total_tokens": 34593
+  },
+  "timing": {
+    "executor_duration_seconds": 115.1,
+    "total_duration_seconds": 115.1
+  },
+  "claims": [
+    {
+      "claim": "Azure OpenAI retains prompts/completions up to 30 days for abuse monitoring with possible Microsoft human review; requires a Limited Access application to disable",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct, and a genuinely valuable catch that the with_skill run does NOT make - a real residency violation that survives the entire migration if unaddressed."
+    },
+    {
+      "claim": "Azure PG Flexible Server's built-in PgBouncer in transaction pooling mode breaks the psycopg prepared statements used by langgraph-checkpoint-postgres; set prepare_threshold=None",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct, specific, actionable implementation detail that the with_skill run does not surface."
+    },
+    {
+      "claim": "'No data leaves our tenant' is three different requirements (any Azure / their subscription / a region/geo) that cost wildly different amounts and must be disambiguated before building",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Strong framing - the only one of the four answers that interrogates the requirement before pricing the migration. Not covered by any assertion."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "No assertion covers Azure OpenAI's default abuse-monitoring retention (up to 30 days, possible Microsoft human review, requires a Limited Access application to disable). The without_skill run caught it and the with_skill run did not - it is a genuine residency violation that survives the entire migration, and the eval is currently blind to it."
+      },
+      {
+        "assertion": "Notes Azure BAA/data-use coverage must be re-established in writing rather than assumed from the AWS posture",
+        "reason": "The prompt never scopes HIPAA or PHI, so 'BAA' is ambiguous - the two runs pass this via quite different content (with_skill via a conditional HIPAA aside, without_skill via abuse-monitoring paperwork). Consider splitting it into a concrete assertion about Azure's data-use/retention terms specifically."
+      }
+    ],
+    "overall": "Assertions are discriminating and the planted-gap checks work as intended. Add an abuse-monitoring assertion - the strongest miss in the with_skill run currently goes uncaught."
+  }
+}

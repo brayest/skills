@@ -1,0 +1,19 @@
+{
+  "skill_name": "ai-engineering-implementation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "qa-agent-repo-mount-least-agency",
+      "prompt": "I want to give my QA agent the ability to read the repo it's testing so it can check the code against the ticket. currently thinking of just volume-mounting the repo into the container. any issues with that?",
+      "expected_output": "Should flag excessive agency (OWASP LLM06) and that source code/comments are untrusted input carrying prompt injection. Should recommend scoping to the files under evaluation (diff-derived allowlist / per-job staging), path-traversal denial by resolution check, no model-composed paths, and a capability manifest. Should NOT just say 'mount it read-only'.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "measuring-nondeterministic-output-quality",
+      "prompt": "our PO says the generated tickets are sometimes wrong but she can't tell me how often. how do I actually measure this — the output is different every run so I can't just diff against expected.",
+      "expected_output": "Should propose asserting properties/invariants not transcripts, a golden set, the three metric layers (deterministic assertions, LLM-judge with calibration, human edit-rate), evaluating through the real graph not a bare model call, and using the human edit rate as the honest signal. Should mention judge calibration.",
+      "files": []
+    }
+  ]
+}

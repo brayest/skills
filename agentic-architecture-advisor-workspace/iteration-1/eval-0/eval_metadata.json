@@ -1,0 +1,11 @@
+{
+  "eval_id": 0,
+  "eval_name": "support-bot-and-ci-bot-diagnosis",
+  "prompt": "Our internal support bot has been chatting with a customer for like 40+ turns and it keeps forgetting the account number they gave us in message 3. Separately, our CI bot that reviews PRs with Claude is flagging almost every single PR as having 'potential issues' and the team has basically started ignoring its comments. Can you help me figure out what's wrong with both of these and how to fix them?",
+  "assertions": [
+    "Names the lost-in-the-middle effect (or the specific attention-to-start/end mechanism) as the cause of the support bot forgetting the account number",
+    "Recommends extracting durable facts into a small block re-anchored at the end of context every turn, and explicitly warns that periodic summarization is the tempting-but-wrong fix",
+    "Names the vague-adjective/ambiguous-instruction pattern as the cause of the CI bot's false positives",
+    "Recommends converting vague review criteria into checkable rules AND gating the build only on explicitly named/structured categories, not free-text concern"
+  ]
+}

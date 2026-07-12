@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    {"text": "Explicitly frames the pipeline choice as workflow-vs-agent(-vs-multi-agent)", "passed": false, "evidence": "Frames it as 'single call vs. coordinator + sub-agents' and recommends orchestrator-workers for the research step — doesn't use or reason in terms of the workflow/agent distinction itself."},
+    {"text": "Cites token/cost overhead of multi-agent orchestration", "passed": true, "evidence": "\"Trade-off to flag: multi-agent orchestration adds real overhead — spin-up latency, token cost of running multiple agents...\""},
+    {"text": "Ties sub-agent decision to open-ended vs. knowable-in-advance steps", "passed": true, "evidence": "\"Web research is open-ended...\" vs. \"The 10 internal files are a fixed, known set — not an open-ended discovery task.\""},
+    {"text": "Recommends STDIO tied to same-machine co-location", "passed": true, "evidence": "\"Use stdio. Since the wiki server runs on the same laptop as Claude Code, Claude Code spawns it as a child process...\""}
+  ]
+}

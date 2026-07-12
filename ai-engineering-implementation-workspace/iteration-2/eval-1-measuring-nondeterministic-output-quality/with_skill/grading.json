@@ -1,0 +1,95 @@
+{
+  "expectations": [
+    {
+      "text": "CORRECTS the temperature=0 idea — explains it hides the run-to-run variance users actually experience rather than fixing it, and measures a system you don't ship",
+      "passed": true,
+      "evidence": "\"## Don't set temperature to 0 — Temperature 0 makes the *numbers* stable, not the *system* stable. You'd be measuring a configuration you don't ship, and the variance your PO is complaining about is precisely the thing you'd be suppressing. 'Sometimes wrong' is a statement about run-to-run variance. Deleting the variance from the measurement means you can no longer see the bug.\" Also \"Ship temperature stays ship temperature in the eval.\""
+    },
+    {
+      "text": "CHALLENGES the n=30 sample size — gives concrete statistical reasoning that a small set cannot resolve the failure rate or detect modest improvements (e.g. a ~25% rate on n=50 is roughly +/-12pp), and/or recommends reporting a confidence interval",
+      "passed": true,
+      "evidence": "\"## n=30 is too small ... A 20% failure rate measured on 30 cases has a 95% CI of roughly ±14 points — your true failure rate is somewhere in 6%–34%. ... '23% → 19% on n=30' moved nothing and must not be reported as if it did.\" Plus \"Report a bootstrapped confidence interval next to every pass rate.\" and sizing guidance ('low hundreds of cases')."
+    },
+    {
+      "text": "Recommends running each case K times (e.g. K=5) and reporting variance / reliable-pass rate (fraction passing all K), not a single run per case",
+      "passed": true,
+      "evidence": "\"run each case **K times** (K=5 is a fine default) and report two numbers. - **Aggregate pass rate** ... - **Reliable-pass rate** — fraction of cases that pass *all K runs*.\" Implemented in the runner: `reliable = statistics.mean(all(v) for v in by_case.values())` and a flaky band `if 0 < statistics.mean(v) < 1`."
+    },
+    {
+      "text": "States the core reframe: assert properties/invariants rather than exact-match transcripts",
+      "passed": true,
+      "evidence": "\"## Don't diff against expected output — assert properties ... Golden expectations are structural and semantic invariants — what must be *true* of a correct backlog, not what it must *say*.\" with a concrete expected.yaml of invariants (must_cover_requirements, must_not_invent, ticket_count bounds)."
+    },
+    {
+      "text": "Proposes deterministic code assertions as one layer (schema validity, requirement coverage, forbidden strings)",
+      "passed": true,
+      "evidence": "Layer table: \"| Deterministic | Code assertions | schema valid, requirement coverage (IDs traced), count bounds, forbidden strings, token/latency budget | Ground truth |\" plus \"Build the deterministic layer first.\" and `forbidden_content: [TODO, PLACEHOLDER, lorem, \"as appropriate\"]`."
+    },
+    {
+      "text": "Proposes LLM-as-judge with a rubric AND addresses judge calibration against human scores",
+      "passed": true,
+      "evidence": "\"| LLM-judge | Versioned rubric + judge model | ...\" and \"**If you add a judge, calibrate it.** Periodically sample ~30 judge verdicts, have a human score the same outputs blind, and report agreement. An uncalibrated judge is a random number generator with authority. Stamp the judge model ID and rubric version on every score.\""
+    },
+    {
+      "text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+      "passed": true,
+      "evidence": "\"**Instrument the review step.** Per-ticket accept / edit / reject, with the reviewer, timestamp, and edit distance\" with a `TicketReview` model (action: Literal[\"accepted\", \"edited\", \"rejected\"], edit_distance). Framed as the real metric: \"Two weeks of this gives you the real failure rate on the real input distribution\" and the Human layer is labelled \"The real signal\". Also flags rubber-stamping and automation bias."
+    },
+    {
+      "text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call",
+      "passed": true,
+      "evidence": "\"## Run the real system, not a bare model call — The eval must invoke the actual code path — same graph, same retrieval, same middleware, same model IDs, real (not sanitized) inputs. System behavior ≠ model behavior. A prompt that scores well in a notebook tells you nothing about the pipeline you ship.\" Runner comment: `result = await generate_backlog(case.input, session=scratch_session())  # the REAL graph`."
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 6363,
+    "total_tokens": 40447
+  },
+  "timing": {
+    "executor_duration_seconds": 72.7,
+    "total_duration_seconds": 72.7
+  },
+  "claims": [
+    {
+      "claim": "A 20% failure rate on n=30 has a 95% CI of roughly ±14 points (6%–34%)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Normal-approx SE = sqrt(.2*.8/30) = 0.073; 1.96*SE = 14.3pp. Matches."
+    },
+    {
+      "claim": "K=5 reps do not buy sample size — 30 cases x 5 runs is still 30 independent cases",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct and a subtle point most answers miss: repeated draws on the same case do not widen input-distribution coverage, and the runs are not independent samples of the case population."
+    },
+    {
+      "claim": "Cases with per-case pass rate strictly between 0 and 1 are usually prompt underspecification",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Plausible and actionable; presented as a heuristic ('almost always'), not as a measured fact. Slightly overstated but not misleading."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "No assertion covers per-check / per-failure-mode decomposition ('17% of runs invent a ticket with no source requirement' vs a single scalar pass rate). Both runs produced it and it is arguably the most actionable output of the whole design — worth an assertion."
+      },
+      {
+        "assertion": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+        "reason": "Discriminating and it worked (without_skill failed it), but consider tightening to require the signal be *instrumented in the product* rather than a one-off labeling session — that is the distinction that actually separated the two runs."
+      }
+    ],
+    "overall": "The two 'correction' assertions (temp=0, n=30) are well designed — they force the answer to push back on the user rather than comply. Both runs passed them, which suggests they may be easier than intended for a strong model; the discriminating assertions here were 7 and 8."
+  }
+}

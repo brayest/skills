@@ -1,0 +1,87 @@
+{
+  "metadata": {
+    "skill_name": "agentic-architecture-advisor",
+    "skill_path": "/Users/brayest/.claude/skills/agentic-architecture-advisor",
+    "executor_model": "claude-sonnet-5",
+    "analyzer_model": "claude-sonnet-5",
+    "timestamp": "2026-07-06T21:26:00Z",
+    "evals_run": [0, 1],
+    "runs_per_configuration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "eval_name": "support-bot-and-ci-bot-diagnosis",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 43.8, "tokens": 43789, "tool_calls": 6, "errors": 0},
+      "expectations": [
+        {"text": "Names the lost-in-the-middle effect as the cause of the support bot forgetting the account number", "passed": true, "evidence": "\"Cause: lost-in-the-middle...\""},
+        {"text": "Recommends a fact block re-anchored at end of context, warns against summarization", "passed": true, "evidence": "Explicit case-block example + dedicated 'trap to avoid' on summarization."},
+        {"text": "Names the vague-adjective pattern for the CI bot", "passed": true, "evidence": "\"Cause: vague-adjective prompting...\""},
+        {"text": "Recommends checkable rules AND structured category gating", "passed": true, "evidence": "Numbered rules + JSON tool schema with named blocking categories."}
+      ],
+      "notes": ["Also flagged a bonus issue: CLAUDE.md rules living in the user-level file never reaching headless CI."]
+    },
+    {
+      "eval_id": 0,
+      "eval_name": "support-bot-and-ci-bot-diagnosis",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "time_seconds": 44.0, "tokens": 36109, "tool_calls": 1, "errors": 0},
+      "expectations": [
+        {"text": "Names the lost-in-the-middle effect as the cause of the support bot forgetting the account number", "passed": true, "evidence": "\"Lost-in-the-middle effect. Even if the full history is technically in context...\""},
+        {"text": "Recommends a fact block re-anchored at end of context, warns against summarization", "passed": true, "evidence": "\"Re-anchor critical facts near the end of context\" + warning against blind truncate/summarize."},
+        {"text": "Names the vague-adjective pattern for the CI bot", "passed": false, "evidence": "Diagnoses as a 'low-bar question'/confidence-calibration problem rather than specifically an ambiguous-adjective problem."},
+        {"text": "Recommends checkable rules AND structured category gating", "passed": true, "evidence": "Recommends high-confidence-only framing + structured JSON with severity/confidence/category."}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "pipeline-shape-and-mcp-transport",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 38.8, "tokens": 42655, "tool_calls": 5, "errors": 0},
+      "expectations": [
+        {"text": "Explicitly frames the pipeline choice as workflow-vs-agent(-vs-multi-agent)", "passed": true, "evidence": "\"Use a workflow, not a coordinator + sub-agents...\""},
+        {"text": "Cites token/cost overhead of multi-agent orchestration", "passed": true, "evidence": "\"...roughly an order of magnitude more tokens than a single-call/workflow approach.\""},
+        {"text": "Ties sub-agent decision to open-ended vs. knowable-in-advance steps", "passed": true, "evidence": "\"The steps here are knowable ahead of time...\""},
+        {"text": "Recommends STDIO tied to same-machine co-location", "passed": true, "evidence": "\"The deciding fact is co-location...\""}
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "pipeline-shape-and-mcp-transport",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "time_seconds": 37.0, "tokens": 35963, "tool_calls": 1, "errors": 0},
+      "expectations": [
+        {"text": "Explicitly frames the pipeline choice as workflow-vs-agent(-vs-multi-agent)", "passed": false, "evidence": "Frames as 'single call vs coordinator + sub-agents' without the workflow/agent distinction itself."},
+        {"text": "Cites token/cost overhead of multi-agent orchestration", "passed": true, "evidence": "\"Trade-off to flag: multi-agent orchestration adds real overhead...\""},
+        {"text": "Ties sub-agent decision to open-ended vs. knowable-in-advance steps", "passed": true, "evidence": "\"Web research is open-ended...\" vs \"10 internal files are a fixed, known set\"."},
+        {"text": "Recommends STDIO tied to same-machine co-location", "passed": true, "evidence": "\"Use stdio. Since the wiki server runs on the same laptop...\""}
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "stddev": 0.0},
+      "time_seconds": {"mean": 41.3, "stddev": 2.5},
+      "tokens": {"mean": 43222, "stddev": 567}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.75, "stddev": 0.0},
+      "time_seconds": {"mean": 40.5, "stddev": 3.5},
+      "tokens": {"mean": 36036, "stddev": 73}
+    },
+    "delta": {"pass_rate": "+0.25", "time_seconds": "+0.8", "tokens": "+7186"}
+  },
+  "notes": [
+    "Both configurations already reason well here because the underlying model has strong built-in knowledge of Anthropic's own published guidance — the skill's edge is precision and consistency (exact anti-pattern names, explicit workflow-vs-agent framing) rather than teaching the model something it otherwise couldn't reach.",
+    "The one assertion that discriminated most cleanly was 'names the vague-adjective pattern' (eval 0) and 'explicitly frames as workflow-vs-agent' (eval 1) — both cases where the baseline reached a similar practical recommendation via a different, less precise diagnostic frame.",
+    "Token cost was ~20% higher with the skill, mostly from reading the reference files — worth watching as the skill is used more, but not concerning at this scale."
+  ]
+}

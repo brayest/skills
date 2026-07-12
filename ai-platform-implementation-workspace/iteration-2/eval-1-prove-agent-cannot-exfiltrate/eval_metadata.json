@@ -1,0 +1,17 @@
+{
+  "eval_id": 1,
+  "eval_name": "prove-agent-cannot-exfiltrate",
+  "prompt": "we're on EKS calling Bedrock. security review is asking 'what stops the agent from sending data somewhere it shouldn't.' we have default-deny NetworkPolicies, PrivateLink to Bedrock, and we pass a Bedrock guardrail ID on every InvokeModel call. what else do they need to see?",
+  "assertions": [
+    {"text": "CATCHES THE PLANTED GAP: passing a guardrail ID as a call parameter is default-ALLOW — a code path can omit it. Recommends conditioning the IAM permission on bedrock:GuardrailIdentifier so an un-guardrailed call is DENIED"},
+    {"text": "CATCHES THE PLANTED GAP: NetworkPolicy is bypassable by a pod with hostNetwork: true, and recommends Pod Security Admission (restricted) and/or Kyverno/OPA admission control to close it"},
+    {"text": "Names audit surfaces that are OFF BY DEFAULT and must be explicitly enabled — specifically Bedrock model invocation logging AND CloudTrail data events"},
+    {"text": "Notes EKS control-plane logs are off by default and should be enabled"},
+    {"text": "Recommends S3 endpoint policy with aws:ResourceAccount / aws:ResourceOrgID condition to block writes to attacker-owned buckets"},
+    {"text": "Identifies DNS as an exfiltration channel requiring restriction and/or query logging"},
+    {"text": "Recommends model-ARN allowlisting layered across IAM role, SCP, and VPC endpoint policy"},
+    {"text": "Warns that cross-region inference profiles can move the processing region, and that invocation logs record in the SOURCE region so logs are not evidence for a residency claim"},
+    {"text": "Offers a concrete live demonstration for the reviewer (e.g. exec into an agent pod, show outbound curl / external DNS blocked)"},
+    {"text": "Does not simply validate the user's existing three controls as sufficient"}
+  ]
+}

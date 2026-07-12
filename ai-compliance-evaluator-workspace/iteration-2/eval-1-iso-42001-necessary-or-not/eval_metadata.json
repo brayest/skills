@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "iso-42001-necessary-or-not",
+  "prompt": "client's legal is asking whether we need ISO 42001 before they'll sign. do we? we're a small team shipping an internal AI tool for them, US only. their counsel also said something about it 'giving us EU AI Act coverage down the line' and that we could 'fast-track it in a quarter if we throw money at it'.",
+  "assertions": [
+    {"text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'"},
+    {"text": "CORRECTS the client counsel's claim that ISO 42001 confers EU AI Act coverage — states it gives no legal presumption of conformity"},
+    {"text": "CORRECTS the 'fast-track with money' claim — explains the gate is ACCUMULATED EVIDENCE of a running management system (internal audits, management reviews, monitoring records over ~6-12 months), which spending cannot compress"},
+    {"text": "Does NOT describe NIST AI RMF and ISO 42001 as having a lineage/parent-child relationship (e.g. 'AI RMF is the structure 42001 is built on') — treats them as independently authored and crosswalked"},
+    {"text": "Recommends NIST AI RMF as the immediate free alternative AND states it is non-certifiable"},
+    {"text": "Asks or flags the question that actually determines the answer: whether the tool touches regulated data (PHI/PII) or makes decisions about people — i.e. whether a layer with real teeth applies"},
+    {"text": "Names the concrete evidence package to offer the client instead of a certificate (e.g. data-flow diagram, system card, eval results, security controls)"}
+  ]
+}

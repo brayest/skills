@@ -1,0 +1,14 @@
+{
+  "eval_id": 1,
+  "eval_name": "iso-42001-necessary-or-not",
+  "prompt": "client's legal is asking whether we need ISO 42001 before they'll sign. do we? we're a small team shipping an internal AI tool for them, US only.",
+  "assertions": [
+    {"text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'"},
+    {"text": "States that ISO 42001 is not legally required (no US law mandates it) and is a voluntary certifiable standard"},
+    {"text": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable"},
+    {"text": "Recommends NIST AI RMF as the immediate, free, non-certifiable alternative"},
+    {"text": "States explicitly that NIST AI RMF has no certification / cannot be certified against"},
+    {"text": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity"},
+    {"text": "Suggests what to actually offer the client instead (evidence/artifacts, e.g. AI RMF alignment, data-flow, security controls) to unblock signature"}
+  ]
+}

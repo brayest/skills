@@ -1,0 +1,115 @@
+{
+  "eval_id": 1,
+  "eval_name": "measuring-nondeterministic-output-quality",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "States the core reframe: assert properties/invariants rather than exact-match transcripts",
+      "passed": true,
+      "evidence": "'String equality is the wrong assertion for LLM output. **Assert properties, not transcripts.** A generated ticket is correct if it satisfies structural and semantic invariants, not if it matches a stored string.' Backed by expected.yaml containing assertions rather than tickets: 'expected.yaml     # assertions, not tickets'."
+    },
+    {
+      "text": "Proposes a golden set / curated eval dataset of inputs with expected properties",
+      "passed": true,
+      "evidence": "'## Step 1: the golden set — assert invariants' with a concrete layout (evals/golden/case_001/input/, expected.yaml, rubrics/, runners/run_offline.py, datasheet.yaml) and a filled-in expected.yaml specifying must_cover_requirements, must_not_invent, ticket_count bounds, acceptance_criteria, forbidden_content."
+    },
+    {
+      "text": "Proposes deterministic code assertions as one layer (e.g. schema validity, requirement coverage, count bounds, forbidden strings)",
+      "passed": true,
+      "evidence": "Metric-layer table row: '**Deterministic** | Code assertions | schema validity, requirement coverage, count bounds, citation validity, forbidden strings, token/latency budgets | Ground truth'. Elaborated: 'Coverage: every requirement ID appears in >=1 ticket. Deterministic, exact' and 'Groundedness: every ticket cites the requirement span it came from... then *verify it in code* against the source document.'"
+    },
+    {
+      "text": "Proposes LLM-as-judge with a rubric as a second layer",
+      "passed": true,
+      "evidence": "'**LLM-as-judge** | Versioned rubric + judge model | criteria verifiability, faithfulness to source, ticket scope sanity | Calibrated (below)' — explicitly the second of three layers, with 'rubrics/  # LLM-judge rubrics, versioned like prompts' in the repo layout."
+    },
+    {
+      "text": "Addresses judge calibration or validating the judge against human scores (not treating judge output as ground truth)",
+      "passed": true,
+      "evidence": "'**Judge calibration is non-negotiable.** Periodically sample N judge verdicts, have the PO score the same outputs blind, report agreement. An uncalibrated judge is a random number generator with authority.' Plus the cross-check 'Judge scores diverging from PO edit rate → your rubric is wrong' and 'Stamp judge model + rubric version on every score.' Note the trust column marks the judge 'Calibrated' and only the human layer 'The real signal' — judge output is explicitly not ground truth."
+    },
+    {
+      "text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+      "passed": true,
+      "evidence": "Leads with it as Step 0: 'make the PO's review emit a number', with a `TicketReview` model carrying action: Literal[\"accepted\", \"edited\", \"rejected\"], edit_distance, reject_reason. '**Edit rate + reject rate is your fit-criteria accuracy proxy.** It's the most honest metric in the system because it's produced by the person who actually knows.' The layer table marks Human / 'edit rate, reject rate, edit distance' as 'The real signal'. It also guards the metric against rubber-stamping: 'Per-item accept/edit/reject. No \"approve all\" as the primary action... it produces a fake 0% edit rate.'"
+    },
+    {
+      "text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call",
+      "passed": true,
+      "evidence": "'## Step 4: evaluate the real system, not a model call — The harness must invoke **the real graph** — same code path, same gateway, same prompt templates, same model IDs, same retry/validation middleware — against a scratch session. No mock model, no bypassed middleware, no notebook calling the API directly.' Plus deployment-realistic inputs: 'golden inputs must be realistic in **size and messiness**. A 30-page requirements doc with contradictions and a stale appendix is the deployment condition. A clean 200-word synthetic spec tests nothing your PO cares about.'"
+    },
+    {
+      "text": "Recommends growing the eval set from real failures the PO rejects",
+      "passed": true,
+      "evidence": "'Deterministic coverage passing while the PO rejects tickets → your golden set is missing a failure mode. **Add the rejected case.** That last line is the engine. Every ticket your PO rejects becomes a golden case. The suite converges on your actual failure distribution instead of one you imagined.' Reiterated in the build order: '6. **Feed rejections back** into the golden set, forever.'"
+    }
+  ],
+  "summary": {
+    "passed": 8,
+    "failed": 0,
+    "total": 8,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "total_duration_seconds": 72.2,
+    "total_tokens": 40939
+  },
+  "claims": [
+    {
+      "claim": "Setting temperature to 0 doesn't make output deterministic",
+      "type": "factual",
+      "verified": true,
+      "evidence": "'Setting temperature to 0 hides it rather than fixing it, and doesn't make output deterministic anyway.' Correct — batching, floating-point non-associativity on GPU, and MoE routing make greedy decoding non-reproducible in practice. Important because temperature=0 is the naive answer to this user's question."
+    },
+    {
+      "claim": "Requirement IDs convert a fuzzy semantic problem into set membership",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'a preprocessing pass that assigns stable IDs to requirement statements is the highest-leverage thing you can build — it converts a fuzzy semantic problem into set membership.' This is the load-bearing insight that makes the deterministic coverage layer actually deterministic, and it's what lets the answer avoid leaning on the judge for the 'dropped requirement' failure mode. Justified."
+    },
+    {
+      "claim": "A rising accepted-untouched rate can mean reviewer disengagement, not quality improvement",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'Watch the *accepted-untouched* rate specifically. If it climbs toward 100%, that's not quality improving; that's your reviewer disengaging.' Correct and non-obvious — it identifies the failure mode that would silently corrupt the very metric the answer recommends as primary. No assertion covers this."
+    },
+    {
+      "claim": "Automation bias is a named failure mode in NIST AI 600-1",
+      "type": "factual",
+      "verified": true,
+      "evidence": "'Automation bias is the named failure here (NIST AI 600-1)'. NIST AI 600-1 (Generative AI Profile) does treat automation bias / over-reliance on GAI output as a named risk. Citation is apt, not decorative."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Proposes a golden set / curated eval dataset of inputs with expected properties",
+        "reason": "Non-discriminating — both configurations built a golden set. This is the first thing any competent answer reaches for on this prompt."
+      },
+      {
+        "assertion": "Proposes LLM-as-judge with a rubric as a second layer",
+        "reason": "Non-discriminating — both configurations proposed a layered deterministic-then-judge scorer, and the baseline's rubric (binary criteria, explicit warning against 1–5 scores anchoring at 4) is arguably sharper than the with-skill run's."
+      },
+      {
+        "assertion": "Addresses judge calibration or validating the judge against human scores",
+        "reason": "Non-discriminating — the baseline dedicated a whole layer to it with a concrete target ('Compute agreement (Cohen's kappa)... Iterate until kappa > ~0.6'). Both pass comfortably."
+      },
+      {
+        "assertion": "Recommends growing the eval set from real failures the PO rejects",
+        "reason": "Non-discriminating — both configurations proposed promoting PO rejections into the golden set, in nearly identical terms."
+      },
+      {
+        "reason": "No assertion covers running each case K times and reporting a pass RATE rather than pass/fail — which is the single most direct answer to 'the output is different every run'. Both configurations proposed it (K=5), so it wouldn't discriminate here, but its absence from the assertion list means an answer could pass 8/8 while never addressing the variance in the user's actual question."
+      },
+      {
+        "reason": "No assertion covers statistical honesty — sample sizing and confidence intervals. The BASELINE did this and the with-skill run did not ('at n=50 you can resolve a ~25% failure rate to roughly ±12pp'; 'Bootstrap a 95% CI over the suite score so you don't chase noise'). That's a real gap in the skill that the current assertions hide, and it's directly relevant to a PO asking 'how often'."
+      }
+    ],
+    "overall": "Assertion set is largely non-discriminating on this eval — the baseline hit 7/8. Only assertion 7 (evaluate through the real pipeline, not a bare model call) separated the runs. Worth adding assertions for K-run variance reporting and for sample-size/CI reasoning; the latter would expose a genuine weakness in the with-skill output."
+  }
+}

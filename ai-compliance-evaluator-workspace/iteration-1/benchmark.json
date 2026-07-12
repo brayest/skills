@@ -1,0 +1,288 @@
+{
+  "metadata": {
+    "skill_name": "ai-compliance-evaluator",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-07-12T16:56:04Z",
+    "evals_run": [
+      0,
+      1
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 8,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 89.8,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+          "passed": true,
+          "evidence": "Opens with 'they will not ask about ISO 42001'. The 'What actually binds you' table is ordered HIPAA first ('Yes, and it's the only layer with teeth. There is no HIPAA AI rule and no AI carve-out'), HITRUST second ('Indirectly, and this is your leverage'), with AI RMF third ('Voluntary') and ISO 42001 explicitly 'No.'"
+        },
+        {
+          "text": "States that the first question will be about where client data / PHI goes (data flow and residency)",
+          "passed": true,
+          "evidence": "'They will ask two questions \u2014 where does our data go and how do you know the AI isn't making things up'. Reinforced by 'Is there a data-residency clause in the MSA/BAA?' as question #1 of the clarifying set, and 'The single artifact their security team most wants' being the data-flow diagram with the residency boundary drawn on it."
+        },
+        {
+          "text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)",
+          "passed": true,
+          "evidence": "Names both: 'They won't demand you hold a HITRUST AI Security cert (44 controls, expensive, slow)' and \"HITRUST's *AI Risk Management Assessment* is **scored against NIST AI RMF 1.0 and ISO 23894**\". Also references bolting the AI Security assessment onto their existing e1/i1/r2."
+        },
+        {
+          "text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant",
+          "passed": true,
+          "evidence": "F2: 'Bedrock is HIPAA-eligible under the AWS BAA (self-serve via AWS Artifact \u2014 verify against the live HIPAA Eligible Services page)' plus the eligibility\u2260compliance point: 'BAA coverage varies by endpoint, feature, and sub-processor... logging, telemetry, preview APIs, and third-party tracing layers are commonly out of BAA scope even when the base model endpoint is in scope.' Artifact table includes 'Confirm the AWS BAA + Bedrock HIPAA eligibility'."
+        },
+        {
+          "text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+          "passed": true,
+          "evidence": "The 'Artifacts you're missing' table names 8 of the 8 listed items: 'Data-flow diagram with the residency boundary', 'AI system inventory' (GOVERN 1.6), 'System cards (one per agent)', 'Eval report' (MEASURE 2.1, 2.3), 'Red-team report (prompt injection)' (MEASURE 2.7), 'Event logs / decision traces', 'Incident log + response plan' (MANAGE 4.3), 'Impact assessment per agent' (ISO/IEC 42005:2025) \u2014 each with an effort estimate."
+        },
+        {
+          "text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+          "passed": true,
+          "evidence": "F5 is tagged 'P0 \u2014 the highest-value missing thing on this page': 'You need a golden set, an output-accuracy number, and testing under deployment-like conditions... If exactly one item on this list gets done before next month, it's this one.'"
+        },
+        {
+          "text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary",
+          "passed": true,
+          "evidence": "F2 (P0): 'The moment you add Langfuse/LangSmith/any SaaS tracer, the trace store holds prompt content \u2014 i.e. PHI \u2014 and must sit inside the same compliance boundary as the model call. A SaaS observability vendor does not survive this unless separately BAA-covered.' Fix: 'self-hosted trace store, inside the boundary. Non-negotiable.'"
+        },
+        {
+          "text": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+          "passed": true,
+          "evidence": "'What to do, in order' has four explicit horizons: 'This week (days)', 'Before the review (weeks)', 'Before production', and 'Not now: ISO 42001 certification. Your own HITRUST AI Security certification. EU AI Act work.' Findings are additionally tagged P0/P1/P2."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 61.9,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+          "passed": true,
+          "evidence": "First word of the body: '**No.** Nothing obligates it, and you couldn't get it in time even if you wanted to.' Closing: 'For a small team, one client, one internal tool, US only \u2014 it's the wrong investment right now. Build the artifacts, defer the audit.' The conditions under which it would flip are stated separately and explicitly ('Where the answer would flip'), which sharpens rather than dilutes the recommendation."
+        },
+        {
+          "text": "States that ISO 42001 is not legally required (no US law mandates it) and is a voluntary certifiable standard",
+          "passed": true,
+          "evidence": "Binding-layer table: '**ISO/IEC 42001** | Not required | Certifiable, but voluntary and contractual-only. Nobody *needs* it; a client can *demand* it.' Opening: 'Nothing obligates it.'"
+        },
+        {
+          "text": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable",
+          "passed": true,
+          "evidence": "'Certification requires an *audited, running* management system \u2014 realistically 6\u201312 months of accumulated evidence (internal audits, management reviews, monitoring records) before a Stage 2 audit is even passable, plus a two-stage audit and real money.' Correctly identifies the binding constraint as evidence accumulation, not paperwork."
+        },
+        {
+          "text": "Recommends NIST AI RMF as the immediate, free, non-certifiable alternative",
+          "passed": true,
+          "evidence": "'**NIST AI RMF** | Yes, in practice | Voluntary and non-certifiable \u2014 but it's the vocabulary US buyers speak, and it's what you should build against now.' And: 'It maps cleanly onto NIST AI RMF, which is free, immediate, and \u2014 importantly \u2014 is the structure ISO 42001 is built on. So none of it is wasted if you certify later.'"
+        },
+        {
+          "text": "States explicitly that NIST AI RMF has no certification / cannot be certified against",
+          "passed": true,
+          "evidence": "Stated verbatim in the binding-layer table: 'Voluntary and non-certifiable'."
+        },
+        {
+          "text": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity",
+          "passed": true,
+          "evidence": "'**EU AI Act** | No | US-only deployment. Law, but not your law. Revisit if they ever deploy in the EU.' (The presumption-of-conformity half is not addressed, but the assertion is an OR.)"
+        },
+        {
+          "text": "Suggests what to actually offer the client instead (evidence/artifacts, e.g. AI RMF alignment, data-flow, security controls) to unblock signature",
+          "passed": true,
+          "evidence": "'What to hand them instead \u2014 days of work, not months': data-flow diagram with trust boundary (half a day), system card including 'what it must never be trusted to do', eval harness + first evaluation report, event logs / decision traces, AI system inventory (~1 hr), model/vendor assessment. Plus a contractual bridge: 'data-handling and residency commitments, no-training-on-client-data, incident notification timelines, an audit right.' Includes scripted framing: \"We're not certified, and here's why that shouldn't block the signature.\""
+        }
+      ],
+      "notes": [
+        "Answer self-flags that ISO 42001 content is sourced from certification-body summaries, not the paywalled standard text"
+      ]
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 6,
+        "failed": 2,
+        "total": 8,
+        "time_seconds": 95.5,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+          "passed": true,
+          "evidence": "Opens with \"The first question on the call will be some version of **'does your system touch PHI?'**\" and the first substantive section is 'HIPAA / contractual' (BAA, HIPAA-eligible services, minimum necessary, breach notification). ISO 42001 and AI RMF are never used as the framing layer \u2014 AI RMF appears once, in passing, under 'Model/system card'. Passes on HIPAA-first framing; note that HITRUST is relegated to one line under 'Organizational'."
+        },
+        {
+          "text": "States that the first question will be about where client data / PHI goes (data flow and residency)",
+          "passed": true,
+          "evidence": "\"The first question on the call will be some version of 'does your system touch PHI?'\" and the closing meta-point: 'What you cannot hand-wave is the data path \u2014 because their documents are your input, and they will follow that document all the way through your system and ask where every copy of it lives.' Residency is covered via cross-region inference profiles: 'A hospital that has told you \"data stays in us-east\" will care.'"
+        },
+        {
+          "text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)",
+          "passed": false,
+          "evidence": "HITRUST appears exactly once, as a general certification: 'HITRUST if you want to skip a lot of questionnaire pain with health systems \u2014 expensive, but it's the currency in this market.' No mention of the AI Security Assessment, the AI Risk Management Assessment, or any AI-specific HITRUST product. The generic name-drop does not satisfy an assertion about AI-specific assessments."
+        },
+        {
+          "text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant",
+          "passed": true,
+          "evidence": "'AWS \u2014 yes, covered under the AWS BAA; Bedrock is a HIPAA-eligible service; but *only* if your account is under the AWS BAA and you only use HIPAA-eligible services.' The eligibility\u2260compliance nuance is made explicitly: 'People get caught here on the peripheral stuff \u2014 CloudWatch Logs (eligible), a third-party logging/observability SaaS (probably not under BAA)'. Also actionable: 'Confirm your AWS account is under the AWS BAA and every service you use is HIPAA-eligible.'"
+        },
+        {
+          "text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+          "passed": true,
+          "evidence": "The ranked 'What you're most likely missing' list names four+ from the set: '3. An AI-specific audit trail' (tracing/event logs), '5. A data flow diagram', '6. Model/system card', '7. Eval results'. Incident response plan is also named under Organizational. Missing from the set: AI system inventory, red-team results, impact assessment."
+        },
+        {
+          "text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+          "passed": false,
+          "evidence": "Eval results appear at position 7 of 8 in an explicitly ranked missing list, and are absent from the 'What to do before the meeting' checklist entirely. The answer actively de-prioritizes accuracy: 'Hallucination / accuracy. \"What happens when it generates a wrong ticket?\" **They're less worried about this than you think**, because it's a dev-workflow tool with a human in the loop \u2014 lean on that hard.' Recommending it as a 'visible maturity signal' near the bottom of a ranked list, while telling the reader to lean on human-in-the-loop instead, is not recommending it as a high-priority gap."
+        },
+        {
+          "text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary",
+          "passed": true,
+          "evidence": "Ranked #1 of things most likely missing: 'LLM trace/observability data containing PHI in a non-BAA SaaS. LangSmith, Langfuse Cloud, Datadog LLM Obs, Helicone \u2014 if any of these are in the loop, your prompts (which contain their document text) are leaving the boundary. Self-host it or route it to your own S3/OpenSearch. This is the single most common finding in LangGraph shops.'"
+        },
+        {
+          "text": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+          "passed": true,
+          "evidence": "'What you're most likely missing (**ranked**)' is an explicitly ordered 1\u20138 list, followed by a distinct action set, 'What to do before the meeting' (9 concrete items). That is prioritization, not an undifferentiated dump. Weaker than a phased now/pre-pilot/pre-prod sequence \u2014 there is only one time horizon ('before the meeting') and no 'do not do this' list \u2014 but the assertion as written is satisfied."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 7,
+        "failed": 0,
+        "total": 7,
+        "time_seconds": 43.4,
+        "tokens": 0,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+          "passed": true,
+          "evidence": "'**No.** Nothing in your situation legally requires it, and it is almost certainly not what their legal team actually needs.' Followed by a 'Where to hold the line' section that says to 'Push back on: certification as a condition precedent to signature.'"
+        },
+        {
+          "text": "States that ISO 42001 is not legally required (no US law mandates it) and is a voluntary certifiable standard",
+          "passed": true,
+          "evidence": "'**ISO/IEC 42001 is voluntary.** It's a certifiable management-system standard (an AIMS, same shape as ISO 27001's ISMS). **No US law mandates it.** There is no US federal AI statute that would force it on you, and the state-level stuff that exists (Colorado AI Act, NYC Local Law 144, Illinois BIPA/AIVIA, the California ADMT rules) is scoped to specific use cases... not to \"we built an internal tool.\"'"
+        },
+        {
+          "text": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable",
+          "passed": true,
+          "evidence": "'Realistically $40\u2013120k and 6\u201312 months (gap analysis, build the AIMS, **run it long enough to produce evidence**, Stage 1 + Stage 2 audit, then annual surveillance). You'd be certifying a management system your team is too small to actually operate. And you can't produce it before signature anyway \u2014 so if they truly gate on it, the deal is dead regardless.' Names the running-system requirement, the 6-12 month window, and Stage 2 explicitly."
+        },
+        {
+          "text": "Recommends NIST AI RMF as the immediate, free, non-certifiable alternative",
+          "passed": true,
+          "evidence": "Artifact table row: '**NIST AI RMF mapping** | One page mapping what you already do to Govern / Map / Measure / Manage. Free, US-native, from NIST...' Positioned as part of a package that is 'a few days of writing, not a year of audit', and included in the scripted line to give the client."
+        },
+        {
+          "text": "States explicitly that NIST AI RMF has no certification / cannot be certified against",
+          "passed": true,
+          "evidence": "'Free, US-native, from NIST, and ***not* certifiable** \u2014 which is the point: you can claim alignment honestly without an auditor.'"
+        },
+        {
+          "text": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity",
+          "passed": true,
+          "evidence": "'**The EU AI Act doesn't reach you.** US only, internal tool, no EU users or EU market placement. Out of scope.' Additionally flags the edge case: 'if they're a US subsidiary of an EU parent, their legal may be pre-positioning for EU AI Act pressure from HQ.'"
+        },
+        {
+          "text": "Suggests what to actually offer the client instead (evidence/artifacts, e.g. AI RMF alignment, data-flow, security controls) to unblock signature",
+          "passed": true,
+          "evidence": "'What to give them instead' table: system/model card, data flow + handling doc (retention, no-training terms in writing), human-in-the-loop statement, eval + testing summary (golden set, accuracy/failure rates), security posture (access controls, logging, tenancy, incident response), NIST AI RMF mapping. Plus a verbatim block-quoted script to send to their legal team and a 'Consider: a contractual commitment to pursue certification by a date' bridge."
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 75.85,
+        "stddev": 19.7283,
+        "min": 61.9,
+        "max": 89.8
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.875,
+        "stddev": 0.1768,
+        "min": 0.75,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 69.45,
+        "stddev": 36.8403,
+        "min": 43.4,
+        "max": 95.5
+      },
+      "tokens": {
+        "mean": 0.0,
+        "stddev": 0.0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.12",
+      "time_seconds": "+6.4",
+      "tokens": "+0"
+    }
+  },
+  "notes": []
+}

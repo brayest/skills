@@ -1,0 +1,101 @@
+{
+  "eval_name": "eval-1-iso-42001-necessary-or-not",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+      "passed": true,
+      "evidence": "First line: '**No.** Nothing requires it, and both of their counsel's supporting claims are wrong.' Table: 'ISO/IEC 42001... **Voluntary.** No law requires it. It is a procurement preference, not a legal gate.'"
+    },
+    {
+      "text": "CORRECTS the client counsel's claim that ISO 42001 confers EU AI Act coverage \u2014 states it gives no legal presumption of conformity",
+      "passed": true,
+      "evidence": "'**\"It gives us EU AI Act coverage down the line.\"** It does not. **ISO 42001 confers no presumption of conformity with the EU AI Act.**... Presumption of conformity will come from harmonized EN standards from **CEN-CENELEC JTC 21** once cited in the Official Journal... It is not coverage, and nobody should be writing \"coverage\" into a contract.'"
+    },
+    {
+      "text": "CORRECTS the 'fast-track with money' claim \u2014 explains the gate is ACCUMULATED EVIDENCE of a running management system (internal audits, management reviews, monitoring records over ~6-12 months), which spending cannot compress",
+      "passed": true,
+      "evidence": "'Structurally impossible... **Stage 2 tests whether the management system has actually been operating** \u2014 sampled Annex A controls, interviews with control owners, and evidence from Clauses 8\u201310: internal audit reports, management review minutes, monitoring records, corrective actions. Those are *records that accumulate over time*. Money buys consultants who write policies fast; it cannot manufacture a history of the PDCA loop having turned. Realistically you need **6\u201312 months of a running AIMS**.'"
+    },
+    {
+      "text": "Does NOT describe NIST AI RMF and ISO 42001 as having a lineage/parent-child relationship (e.g. 'AI RMF is the structure 42001 is built on') \u2014 treats them as independently authored and crosswalked",
+      "passed": true,
+      "evidence": "The two appear as separate rows in the 'What actually binds you' table with no derivation claim. The only relationship stated is one of overlapping substance: 'That set satisfies the substance of ISO 42001's Clause 6 and Annex A.6/A.7, maps cleanly to NIST AI RMF (GOVERN 1.6, MAP 1.1/5.x...)' \u2014 a crosswalk, not a lineage."
+    },
+    {
+      "text": "Recommends NIST AI RMF as the immediate free alternative AND states it is non-certifiable",
+      "passed": true,
+      "evidence": "Table row: '**NIST AI RMF** (voluntary, non-certifiable) | Your best play \u2014 free, immediate, and the vocabulary US buyers already speak.' Reinforced by: 'Doing AI RMF properly gets you most of the way to 42001's substance and none of the way to its certificate.'"
+    },
+    {
+      "text": "Asks or flags the question that actually determines the answer: whether the tool touches regulated data (PHI/PII) or makes decisions about people \u2014 i.e. whether a layer with real teeth applies",
+      "passed": true,
+      "evidence": "'Before you send anything, confirm three things': '**Does the tool make or influence decisions about people?** (hiring, performance, credit, care, access). This is the hinge.' and '**Does it touch PHI or other regulated data?** If yes, HIPAA is the layer with teeth and it should be the first thing you address \u2014 not 42001.'"
+    },
+    {
+      "text": "Names the concrete evidence package to offer the client instead of a certificate (e.g. data-flow diagram, system card, eval results, security controls)",
+      "passed": true,
+      "evidence": "'The counter-offer (weeks, not quarters)' names, with effort estimates: 'AI system inventory', 'System card for the tool', '**Data-flow diagram with the boundary drawn on it**', 'Eval harness + a first evaluation report', 'Event logs / decision traces', 'Least-agency review of the tool's permissions', 'AI risk register + an impact assessment', 'Incident log and response plan' \u2014 and offers it 'in writing in the contract' as 'Evidence in lieu'."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "total_tokens": 48542,
+    "output_chars": 7163,
+    "output_files": [
+      "outputs/answer.md"
+    ]
+  },
+  "timing": {
+    "executor_duration_seconds": 69.5,
+    "total_duration_seconds": 69.5
+  },
+  "claims": [
+    {
+      "claim": "The Commission asked CEN-CENELEC for a separate AI-Act-specific QMS standard because 42001's scope doesn't align with the Act's high-risk QMS requirement",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct as of the standardisation request reporting; the answer hedges it appropriately ('there is reporting that')."
+    },
+    {
+      "claim": "ISO/IEC 42001 is paywalled (~CHF 180)",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct order of magnitude for an ISO standard purchase, and the caveat block honestly flags that the description is built from certification-body sources."
+    },
+    {
+      "claim": "40-50% thematic overlap between ISO 42001 and the EU AI Act",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Presented as 'commonly estimated', which is an accurate framing of a widely-cited consultancy figure rather than a hard fact."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Explicit caveat that ISO 42001/42005 are paywalled and the description derives from secondary sources; advises buying the standard before implementation"
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Does NOT describe NIST AI RMF and ISO 42001 as having a lineage/parent-child relationship",
+        "reason": "Negative assertion \u2014 it passes by default whenever the answer simply doesn't discuss the relationship at all. Both runs passed without ever being tested. Consider making it positive: 'states that ISO 42001 and NIST AI RMF are independently authored and related only by crosswalk' \u2014 which forces the model to demonstrate the knowledge rather than avoid the error."
+      },
+      {
+        "assertion": "Asks or flags the question that actually determines the answer: whether the tool touches regulated data (PHI/PII) or makes decisions about people",
+        "reason": "The OR makes this passable on one branch. without_skill flagged only the decisions-about-people branch (and only in an EU AI Act risk-classification frame, not as 'what determines whether 42001 matters'), while with_skill named both and tied PHI to 'the layer with teeth'. Splitting into two assertions, or requiring the framing 'this is what determines whether a binding layer applies', would separate them properly."
+      },
+      {
+        "reason": "No assertion checks whether the answer distinguishes 'is this in their written vendor policy or is it counsel's preference' \u2014 both runs independently landed on this as the actual next action, which suggests it's a real outcome worth scoring."
+      }
+    ],
+    "overall": "The two 'CORRECTS the misconception' assertions are the strongest in the set \u2014 both are genuinely hard to pass by accident. The lineage assertion is weak (passes by silence) and the regulated-data assertion is weakened by its OR."
+  }
+}

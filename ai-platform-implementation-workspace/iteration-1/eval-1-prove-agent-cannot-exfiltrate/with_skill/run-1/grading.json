@@ -1,0 +1,122 @@
+{
+  "eval_id": 1,
+  "eval_name": "prove-agent-cannot-exfiltrate",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "Recommends default-deny egress with no general internet route from workload subnets",
+      "passed": true,
+      "evidence": "§1: '**No NAT-to-anywhere.** Agent workloads run in private subnets. ... the honest target is *zero* internet egress from workload subnets, not \"restricted\" egress. If you're running a NAT gateway for the agent nodegroup today, that's the finding, and it's the one to fix before the review.'"
+    },
+    {
+      "text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet",
+      "passed": true,
+      "evidence": "§1: '**Bedrock over PrivateLink.** Interface endpoint with private DNS, so `bedrock-runtime.*` resolves in-VPC with no code change. The model call never touches the internet.'"
+    },
+    {
+      "text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control",
+      "passed": true,
+      "evidence": "§1: '**In-cluster, NetworkPolicy default-deny ingress+egress per namespace**, then the named flows only. VPC CNI enforces NetworkPolicy natively on EKS.' Followed by an explicit flow table AND a deny list: 'absent on purpose: agent→internet, agent→agent, anything→trace-store except the collector' — east-west (agent→agent) is covered."
+    },
+    {
+      "text": "Identifies DNS as an exfiltration channel that must also be restricted/logged",
+      "passed": true,
+      "evidence": "§1: '**DNS is egress too.** An agent that can resolve arbitrary names can tunnel data out through queries alone. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on in prod.' Both the restriction and the logging are named."
+    },
+    {
+      "text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets",
+      "passed": true,
+      "evidence": "§1: '**S3 via gateway endpoint with an endpoint policy carrying an `aws:ResourceAccount` condition.** ... tight IAM on *your* buckets does nothing to stop `PutObject` to an attacker-owned bucket. The endpoint policy is what closes that path.' The exact condition key is named and the reason the naive control fails is stated."
+    },
+    {
+      "text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)",
+      "passed": true,
+      "evidence": "All four layers, explicitly layered: §2 '`bedrock:InvokeModel*` scoped to named model ARNs'; §2 'Ban Bedrock API keys org-wide via SCP'; §3 'The Bedrock PrivateLink endpoint's resource policy repeats the model-ARN allowlist and scopes to your agent roles ... Model access is governed at four layers (SCP → account model grants → role → endpoint policy) so that no single misconfiguration un-governs it.'"
+    },
+    {
+      "text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)",
+      "passed": true,
+      "evidence": "A dedicated 'enablement checklist' table with a Default column: '**CloudTrail data events** (Bedrock agent-runtime, S3 object-level) | **off** | enable'; '**Bedrock model invocation logging** (full request/response payloads) | **off** | enable → in-tenant bucket only'; '**EKS control-plane logs** (all five) | **off** | enable all five'; 'Route 53 Resolver query logs | off | enable in prod'. Framed correctly: 'The controls that matter most are off by default, and \"we have CloudTrail\" does not mean the agent runtime is logged.'"
+    },
+    {
+      "text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)",
+      "passed": true,
+      "evidence": "'**The 30-second `kubectl` demo.** Shell into an agent pod. `curl https://example.com` → blocked. `dig example.com` against an external resolver → blocked. `aws s3 cp` to a bucket outside the allowed account → denied by endpoint policy.' Plus a second proof (policies-as-code in the repo with review history and Checkov/OPA plan assertions)."
+    },
+    {
+      "text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel",
+      "passed": true,
+      "evidence": "Opens with exactly this frame: 'In an agentic system, **every reachable network destination is an exfiltration channel available to a hijacked agent** — and a tool call is an egress channel. So the control isn't \"we trust the model not to.\" The control is that the set of destinations the agent pod can reach equals the set of named, reviewed dependencies. Prompt injection can at worst misuse an approved channel; it cannot open a new one.' Grounded in MITRE ATLAS and OWASP LLM02."
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "failed": 0,
+    "total": 9,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 7186,
+    "total_tokens": 48327
+  },
+  "timing": {
+    "executor_duration_seconds": 73.7,
+    "total_duration_seconds": 73.7
+  },
+  "claims": [
+    {
+      "claim": "Bedrock API keys can be banned org-wide via SCP using bedrock:BearerTokenType / bedrock:CallWithBearerToken condition keys",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Bedrock API keys (long-lived bearer credentials) are a real and recent Bedrock feature, and AWS exposes condition keys to deny bearer-token calls org-wide. The reasoning given ('they recreate exactly the static-credential problem you eliminated with Pod Identity') is correct and is a control the baseline run missed entirely."
+    },
+    {
+      "claim": "VPC CNI enforces NetworkPolicy natively on EKS",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct — the Amazon VPC CNI has supported native Kubernetes NetworkPolicy enforcement since v1.14, no Calico/Cilium required."
+    },
+    {
+      "claim": "S3 Object Lock in COMPLIANCE mode means nobody, including root, can shorten retention",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct. This is the precise property that distinguishes COMPLIANCE from GOVERNANCE mode, and the answer draws the right conclusion from it ('that single property is what converts \"we keep logs\" into \"our logs are evidence\"')."
+    },
+    {
+      "claim": "IAM and the network cannot express 'this agent may only touch this session's records' — that half is application code",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'The one gap to name yourself' — an accurate and self-limiting statement of what infrastructure controls can and cannot do. Volunteering this boundary is a genuine quality signal, not a hedge."
+    },
+    {
+      "claim": "This is Scope 3 on AWS's Generative AI Security Scoping Matrix",
+      "type": "factual",
+      "verified": true,
+      "evidence": "AWS's Generative AI Security Scoping Matrix does define Scope 3 as 'pre-trained models' (building an application on a third-party foundation model, e.g. via Bedrock), which matches EKS-calling-Bedrock. Correct mapping."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "This eval has SOME discriminating power but not much: with_skill 9/9 vs baseline 8/9. Only assertion 7 (off-by-default audit surfaces) separated them. Assertions 1-6, 8, 9 are all satisfied by a strong base model unaided."
+      },
+      {
+        "reason": "Real gaps in the baseline that no assertion catches, and which would make good discriminating assertions: (a) the SCP ban on Bedrock API keys / bearer-token credentials — a recent, non-obvious static-credential reintroduction the baseline missed entirely; (b) log immutability as evidence (S3 Object Lock COMPLIANCE mode + CloudTrail log-file integrity validation) — the baseline mentions Object Lock in one clause but does not explain why COMPLIANCE mode is the load-bearing property; (c) EKS control-plane audit logs (all five) being off by default; (d) an ALARM SET on the audit logs ('an audit log nobody reads is decoration') — the baseline produces evidence artifacts but no detection; (e) policy-as-code assertions on the Terraform plan so widening the boundary is a failed plan rather than a discovered incident. (a), (c) and (d) are entirely absent from the baseline."
+      },
+      {
+        "assertion": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets",
+        "reason": "Well-designed and near-discriminating — it names a specific condition key that only someone who has thought about attacker-owned-bucket exfil would reach for. The baseline passed it via the sibling key aws:ResourceOrgID, which is a legitimate equivalent. Consider accepting either key explicitly in the assertion text so future grading is unambiguous."
+      },
+      {
+        "assertion": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel",
+        "reason": "Both runs pass, but note the baseline actually goes FURTHER on one axis: it explicitly handles the case where prompt injection makes the agent call a legitimate tool with attacker-chosen arguments (send_email(to=...), http_get(url=...)) and prescribes server-side destination allowlists. The with_skill run asserts 'a tool call is an egress channel' but defers tool design to a sibling skill. If tool-argument exfil is in scope for this skill, that is a real coverage gap worth its own assertion; if it is intentionally out of scope, the current phrasing ('/ tool call') is misleading."
+      }
+    ],
+    "overall": "The best of the two evals — but only 1 of 9 assertions discriminated. The baseline produces a genuinely strong answer, so the bar has to be raised to the controls that require domain depth: off-by-default enablement (already there and working), Bedrock API key / bearer-token SCP, Object Lock COMPLIANCE-mode semantics, an alarm set on the audit surfaces, and policy-as-code drift enforcement."
+  }
+}

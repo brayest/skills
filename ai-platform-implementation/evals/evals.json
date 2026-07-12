@@ -1,0 +1,19 @@
+{
+  "skill_name": "ai-platform-implementation",
+  "evals": [
+    {
+      "id": 0,
+      "name": "residency-boundary-aws-to-azure-tenant",
+      "prompt": "customer won't let any of their data leave their azure tenant, but we built everything on AWS/Bedrock. what actually has to move and what can stay?",
+      "expected_output": "Must identify that the model endpoint, the trace/observability store, AND the log destinations all sit inside the boundary — not just the app and database. Should name Azure AI Foundry as the in-tenant model endpoint, self-hosted tracing, and note that a SaaS trace store or vendor log aggregation breaks the clause. Should note the K8s core is what makes the move possible.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "prove-agent-cannot-exfiltrate",
+      "prompt": "we're on EKS calling Bedrock. security review is asking 'what stops the agent from sending data somewhere it shouldn't.' what do I actually show them?",
+      "expected_output": "Should give layered evidence: default-deny egress with PrivateLink/VPC endpoints (zero internet egress target), NetworkPolicies, DNS as an egress channel, S3 endpoint policy with aws:ResourceAccount, model-ARN allowlists in IAM+SCP+endpoint policy, and the audit surfaces that are OFF by default (invocation logging, CloudTrail data events). Bonus: the live kubectl curl-blocked demo.",
+      "files": []
+    }
+  ]
+}

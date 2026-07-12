@@ -1,0 +1,17 @@
+{
+  "skill_name": "agentic-architecture-advisor",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Our internal support bot has been chatting with a customer for like 40+ turns and it keeps forgetting the account number they gave us in message 3. Separately, our CI bot that reviews PRs with Claude is flagging almost every single PR as having 'potential issues' and the team has basically started ignoring its comments. Can you help me figure out what's wrong with both of these and how to fix them?",
+      "expected_output": "Should name lost-in-the-middle + case-block fix for the support bot (and flag summarization as the tempting wrong fix), and name vague-adjective-prompting + checkable-rules fix for the CI bot, tying both to the same underlying pattern.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "I'm building a pipeline: it needs to read ~10 internal files, do some web research, and write a synthesized report. Should I use a single Claude call, a coordinator with sub-agents, or something else? Also, I want to stand up an MCP server for our internal wiki that Claude Code will call — the wiki server would run on the same laptop as Claude Code. What transport should I use for that?",
+      "expected_output": "Should walk through workflow-vs-agent-vs-multi-agent tradeoff (token cost of multi-agent ~10x, context budget rationale for sub-agents, when it's actually justified here), and should recommend STDIO transport for the same-machine MCP server with reasoning, not just SSE by default.",
+      "files": []
+    }
+  ]
+}

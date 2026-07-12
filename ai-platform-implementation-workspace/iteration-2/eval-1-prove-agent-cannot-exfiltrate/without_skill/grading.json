@@ -1,0 +1,105 @@
+{
+  "expectations": [
+    {
+      "text": "CATCHES THE PLANTED GAP: passing a guardrail ID as a call parameter is default-ALLOW - a code path can omit it. Recommends conditioning the IAM permission on bedrock:GuardrailIdentifier so an un-guardrailed call is DENIED",
+      "passed": true,
+      "evidence": "'\"We pass a guardrail ID on every InvokeModel call\" is an application convention, not an enforced control. Nothing stops a code change, a new service, or a compromised pod from omitting it.' Provides the IAM policy with the 'bedrock:GuardrailIdentifier' StringEquals condition and 'Deny `bedrock:*` without the condition. Now \"the guardrail is always applied\" is a provable property of the trust policy, not a claim about the codebase.'"
+    },
+    {
+      "text": "CATCHES THE PLANTED GAP: NetworkPolicy is bypassable by a pod with hostNetwork: true, and recommends Pod Security Admission (restricted) and/or Kyverno/OPA admission control to close it",
+      "passed": false,
+      "evidence": "The hostNetwork bypass is never identified. The closest sentence states the reassuring opposite: 'NetworkPolicy applies pod-wide, so a malicious sidecar shares your egress rules - good, but only if nothing can schedule an unsigned image.' Kyverno/Gatekeeper appears only as image-signature admission control, and 'no privileged' only as container hardening - neither names hostNetwork nor Pod Security Admission, and nothing conveys that a pod can opt itself out of every NetworkPolicy egress rule with one field. The answer's stated critique of NetworkPolicy is that it is 'L3/L4 and CNI-dependent', a different and lesser point."
+    },
+    {
+      "text": "Names audit surfaces that are OFF BY DEFAULT and must be explicitly enabled - specifically Bedrock model invocation logging AND CloudTrail data events",
+      "passed": true,
+      "evidence": "'Pair it with the always-on logs that would catch a real attempt - **Bedrock model invocation logging** to an S3 bucket with Object Lock, CloudTrail data events for Bedrock, VPC Flow Logs, DNS query logs - because the second question after \"what stops it\" is always \"how would you know if it happened.\"' Both named surfaces are prescribed as things to turn on. It never states they are off by default (the discriminating insight, which with_skill tabulates explicitly), but the assertion's named surfaces are covered."
+    },
+    {
+      "text": "Notes EKS control-plane logs are off by default and should be enabled",
+      "passed": false,
+      "evidence": "No mention of EKS control-plane logging, kube-audit, or API server logs anywhere in the answer. The logging list is limited to 'Bedrock model invocation logging... CloudTrail data events for Bedrock, VPC Flow Logs, DNS query logs' - the cluster audit surface (which is how you would ever see a `kubectl exec` into an agent pod) is absent."
+    },
+    {
+      "text": "Recommends S3 endpoint policy with aws:ResourceAccount / aws:ResourceOrgID condition to block writes to attacker-owned buckets",
+      "passed": true,
+      "evidence": "Threat named precisely: 'The pod's IAM role - `s3:PutObject` to `*` means the agent can write your data into an attacker's bucket over your own PrivateLink.' Remedy: 'Data-perimeter SCPs: `aws:ResourceOrgID` on S3/SQS/etc. so the role physically cannot address a resource outside your org', with negative test '`aws s3 cp` to a bucket outside the org -> `AccessDenied` (SCP)'. Enforced at the SCP rather than the S3 endpoint policy, but the condition key and the attacker-bucket exfil path are correctly identified and blocked - graded on substance."
+    },
+    {
+      "text": "Identifies DNS as an exfiltration channel requiring restriction and/or query logging",
+      "passed": true,
+      "evidence": "'**DNS**: Route 53 Resolver query logging + a DNS firewall. DNS is the classic covert channel and it's the one thing that often survives an egress lockdown.' Negative test #5: 'DNS lookup of an external domain -> blocked, and **logged**.'"
+    },
+    {
+      "text": "Recommends model-ARN allowlisting layered across IAM role, SCP, and VPC endpoint policy",
+      "passed": false,
+      "evidence": "Only two of the three layers. IAM role: yes - resource ARNs scoped to allowlisted foundation-model and inference-profile ARNs ('the agent cannot invoke a model you haven't approved'). VPC endpoint policy: yes - 'restricting `aws:PrincipalArn` to the agent role and the model ARNs'. SCP: SCPs appear ONLY as a data-perimeter control (`aws:ResourceOrgID` on S3/SQS), never as an org-wide model-ARN/region allowlist. The layer that survives a misconfigured account or a changed role policy is missing."
+    },
+    {
+      "text": "Warns that cross-region inference profiles can move the processing region, and that invocation logs record in the SOURCE region so logs are not evidence for a residency claim",
+      "passed": false,
+      "evidence": "Half of the assertion only. It does warn: 'if you use cross-region inference profiles, your data leaves the region you told the reviewer it stays in. Pin it, or add an `aws:RequestedRegion` condition, and be ready to say so out loud before they find it.' But there is no statement that CloudTrail / invocation logs record in the SOURCE region, and hence no warning that the logs will look consistent with a single-region story and cannot serve as evidence for a residency claim. That second clause - the actual trap - is entirely absent."
+    },
+    {
+      "text": "Offers a concrete live demonstration for the reviewer (e.g. exec into an agent pod, show outbound curl / external DNS blocked)",
+      "passed": true,
+      "evidence": "'They want to see a **negative test suite that runs in CI** and produces artifacts: 1. `curl https://attacker.example` from inside the pod -> connection refused/timeout... 5. DNS lookup of an external domain -> blocked, and **logged**.' Six concrete demonstrations, shipped as the evidence pack."
+    },
+    {
+      "text": "Does not simply validate the user's existing three controls as sufficient",
+      "passed": true,
+      "evidence": "'Your three controls cover the *network* exfil path. The review is asking about the *agent*, and an agent's main egress channels aren't the network - they're its tools, its IAM role, and its telemetry. Also: one of your three controls isn't actually a control yet.' Closes: 'Your current three controls answer the first line and half the third.'"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 4,
+    "total": 10,
+    "pass_rate": 0.6
+  },
+  "execution_metrics": {
+    "output_chars": 6354,
+    "total_tokens": 31962
+  },
+  "timing": {
+    "executor_duration_seconds": 75.5,
+    "total_duration_seconds": 75.5
+  },
+  "claims": [
+    {
+      "claim": "The agent's own tools (HTTP fetch, S3 write, email/Slack) are the #1 real exfil path and sit entirely inside the NetworkPolicy; the model must never supply a URL/bucket/recipient",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Strong and correct - server-side allowlist keyed by opaque ID. No assertion covers this, and it is arguably the best content in the without_skill answer; the with_skill answer largely defers it to the sibling skill."
+    },
+    {
+      "claim": "Agent subnets with no NAT gateway and no IGW route are the strongest single network statement, verifiable without trusting the CNI",
+      "type": "quality",
+      "verified": true,
+      "evidence": "True, and a good answer to the reviewer's implicit 'why should I trust your CNI'. with_skill does not make this point as crisply."
+    },
+    {
+      "claim": "'NetworkPolicy applies pod-wide, so a malicious sidecar shares your egress rules - good'",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Materially misleading in context. True for a sidecar in a normally-networked pod, but this is precisely the sentence where the hostNetwork bypass should have surfaced. The answer reassures the reader about pod-level network confinement while missing that a pod can opt out of NetworkPolicy entirely with `hostNetwork: true`."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "No assertion covers the agent's own TOOLS as the primary exfil channel (model-supplied URLs / buckets / recipients vs. a server-side allowlist). The without_skill run leads with it and calls it the #1 real path; with_skill largely defers it to the sibling skill. For a question literally asking 'what stops the agent from sending data somewhere it shouldn't', that is a notable blind spot in the assertion set."
+      },
+      {
+        "assertion": "Names audit surfaces that are OFF BY DEFAULT and must be explicitly enabled - specifically Bedrock model invocation logging AND CloudTrail data events",
+        "reason": "As worded, an answer that merely lists the two surfaces as 'logs to ship' passes without ever conveying they are off by default - which is the discriminating insight. Tighten it to require that the off-by-default status be stated."
+      }
+    ],
+    "overall": "The two planted-gap assertions are the sharpest in the set and cleanly separate the runs. Add a tool-egress assertion and tighten the off-by-default wording."
+  }
+}

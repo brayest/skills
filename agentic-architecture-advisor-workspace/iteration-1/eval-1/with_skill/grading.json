@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    {"text": "Explicitly frames the pipeline choice as workflow-vs-agent(-vs-multi-agent)", "passed": true, "evidence": "\"Use a workflow, not a coordinator + sub-agents... this is prompt chaining with a parallelization step.\""},
+    {"text": "Cites token/cost overhead of multi-agent orchestration", "passed": true, "evidence": "\"multi-agent orchestration... runs roughly an order of magnitude more tokens than a single-call/workflow approach.\""},
+    {"text": "Ties sub-agent decision to open-ended vs. knowable-in-advance steps", "passed": true, "evidence": "\"The steps here are knowable ahead of time... When this would flip to multi-agent: if 'do some web research' is actually open-ended\""},
+    {"text": "Recommends STDIO tied to same-machine co-location", "passed": true, "evidence": "\"STDIO. The deciding fact is co-location: the wiki server and Claude Code run on the same laptop.\""}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "eval_id": 0,
+  "eval_name": "qa-agent-repo-mount-least-agency",
+  "prompt": "I want to give my QA agent the ability to read the repo it's testing so it can check the code against the ticket. currently thinking of just volume-mounting the repo into the container. any issues with that?",
+  "assertions": [
+    {"text": "Answers that a whole-repo mount is excessive agency / too broad, rather than approving it with minor caveats"},
+    {"text": "Explicitly identifies source code and code comments as UNTRUSTED INPUT that can carry prompt injection"},
+    {"text": "Recommends an ALLOWLIST of staged/diff-derived files rather than a DENYLIST of dangerous paths, and ideally explains that a denylist fails open"},
+    {"text": "Recommends structural path-traversal denial (resolve path, verify containment in job root)"},
+    {"text": "If it includes a symlink guard, the symlink check is performed BEFORE .resolve() (or staging uses follow_symlinks=False) — a check placed after resolve() is a dead guard and should be graded as FAIL for this assertion"},
+    {"text": "States that the model must not compose/choose filesystem paths from free text; job root and file list come from server-side state"},
+    {"text": "References OWASP LLM06 Excessive Agency, least-agency, or least-privilege for agents by name"},
+    {"text": "Mentions secrets/sensitive files in the repo (e.g. .env, credentials) as a concrete exposure of a full mount"}
+  ]
+}

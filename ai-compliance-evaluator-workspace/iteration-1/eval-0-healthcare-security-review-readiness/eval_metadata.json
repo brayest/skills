@@ -1,0 +1,15 @@
+{
+  "eval_id": 0,
+  "eval_name": "healthcare-security-review-readiness",
+  "prompt": "we're about to put our LangGraph agent platform in front of a hospital system's security team next month. it generates dev tickets from requirement docs, runs on EKS, calls Bedrock. what are they going to ask us and what are we missing?",
+  "assertions": [
+    {"text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF"},
+    {"text": "States that the first question will be about where client data / PHI goes (data flow and residency)"},
+    {"text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)"},
+    {"text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant"},
+    {"text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment"},
+    {"text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap"},
+    {"text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary"},
+    {"text": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list"}
+  ]
+}

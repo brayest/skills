@@ -1,0 +1,119 @@
+{
+  "eval_name": "eval-0-healthcare-security-review-readiness",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+      "passed": true,
+      "evidence": "The 'What binds you' table opens with '**HIPAA + their contract** | **Yes \u2014 this is the only layer with teeth.**' followed by '**HITRUST** | **Yes, contractually.**'. ISO 42001 appears far down the same table marked '**No. Not now.**' and NIST AI RMF is framed as a voluntary bridge, not the binding layer."
+    },
+    {
+      "text": "States that the first question will be about where client data / PHI goes (data flow and residency)",
+      "passed": true,
+      "evidence": "Opens: 'Two questions carry that meeting... 1. **Where does our data go?**' and 'On data (they'll spend most of the meeting here): Show us the data-flow diagram. Where does a requirement doc go from the moment we upload it?' Finding 1 is 'Residency: the platform runs in your tenant, not theirs... The single most likely deal-blocker.'"
+    },
+    {
+      "text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)",
+      "passed": true,
+      "evidence": "'It's that you hand over **control evidence mappable to their framework**' referencing 'a HITRUST AI Security certification (44 controls, expensive, slow)' and '**HITRUST's AI Risk Management Assessment is scored against NIST AI RMF 1.0 and ISO 23894.**' Both AI-specific assessments named."
+    },
+    {
+      "text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant",
+      "passed": true,
+      "evidence": "'Do you have a BAA with AWS? Is Bedrock in a HIPAA-eligible region? **Are your traces and logs inside the BAA?**' and finding 2: 'BAA coverage varies by **endpoint, feature, and sub-processor**. Bedrock's base model endpoint is HIPAA-eligible; a SaaS observability vendor... is not, unless separately BAA-covered.' Explicitly separates HIPAA-eligibility from compliance."
+    },
+    {
+      "text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+      "passed": true,
+      "evidence": "'Artifacts you're missing' table names all eight: 'Data-flow diagram with the residency boundary drawn on it', 'AI system inventory (NIST GOVERN 1.6)', 'System cards per agent', 'Eval report (MEASURE 2.1/2.3)', 'Red-team report on prompt injection (MEASURE 2.7)', 'AI impact assessment per agent (ISO 42005 structure)', 'Incident log + response plan (MANAGE 4.3)', 'Event logs / decision traces'."
+    },
+    {
+      "text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+      "passed": true,
+      "evidence": "Finding 6: 'No measured accuracy number... *because we measure it, here's the harness, the golden set, and the number.* ... **If only one item on this page gets done, it's this one.**' Also step 10 in the pilot sequence: 'Eval harness + first evaluation report. **The one that matters most.**'"
+    },
+    {
+      "text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary",
+      "passed": true,
+      "evidence": "Finding 2: 'Your trace store inherits PHI and is probably outside the BAA... a SaaS observability vendor (Langfuse Cloud, LangSmith, Datadog LLM Obs) is not [HIPAA-eligible]... If your LangGraph traces contain requirement-doc text, that trace store sits inside the compliance boundary. **Self-host it.**'"
+    },
+    {
+      "text": "Flags LangGraph checkpoint/persistence state as a data store that retains document content (an undeclared PHI store) needing a TTL",
+      "passed": false,
+      "evidence": "No mention of a checkpointer, graph-state persistence, or TTL/retention on it anywhere in the answer. The word 'checkpoint' does not appear; LangGraph is only referenced as 'LangGraph traces' (finding 2) and 'each LangGraph node' (finding 4). The persistence layer as an undeclared PHI store is not flagged."
+    },
+    {
+      "text": "Flags prompt injection via the ingested requirement documents as an attack surface",
+      "passed": true,
+      "evidence": "Finding 3: 'Requirement docs are untrusted input and you're treating them as trusted. *(OWASP LLM01 + ASI01 \"Agent Goal Hijack\"; MITRE ATLAS \"LLM Prompt Crafting\")* An uploaded doc flows straight into a system prompt. An agent doesn't just *say back* an injected instruction \u2014 it *acts on* it.'"
+    },
+    {
+      "text": "Gives a prioritized sequence with multiple time horizons AND an explicit 'not now' exclusion (e.g. defers ISO 42001 certification)",
+      "passed": true,
+      "evidence": "'What to do, in order' has three horizons: '**Before the meeting (days):**', '**Before the pilot (weeks):**', '**Before production:**'. Explicit exclusions: ISO 42001 '**No. Not now.**... They won't ask. Build against its structure; don't chase the cert.' and 'Skip: Statement of Applicability, AI policy..., datasheets for datasets (you don't train).'"
+    }
+  ],
+  "summary": {
+    "passed": 9,
+    "failed": 1,
+    "total": 10,
+    "pass_rate": 0.9
+  },
+  "execution_metrics": {
+    "total_tokens": 56042,
+    "output_chars": 13294,
+    "output_files": [
+      "outputs/answer.md"
+    ]
+  },
+  "timing": {
+    "executor_duration_seconds": 107.0,
+    "total_duration_seconds": 107.0
+  },
+  "claims": [
+    {
+      "claim": "HITRUST's AI Risk Management Assessment is scored against NIST AI RMF 1.0 and ISO 23894",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistent with HITRUST's published AI RM Assessment description; the answer also correctly distinguishes it from the 44-control AI Security Assessment."
+    },
+    {
+      "claim": "BAA coverage varies by endpoint, feature and sub-processor \u2014 HIPAA-eligible \u2260 compliant",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct and it is the load-bearing nuance for finding 2. The answer also self-hedges: 'verify Bedrock's HIPAA eligibility against the live AWS page \u2014 don't take my word'."
+    },
+    {
+      "claim": "The compliance work and the product work are the same work",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Supported by the findings themselves \u2014 evals, tracing, and least-agency are each justified on both product and audit grounds."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Answer states three explicit assumptions (non-clinical requirement docs, vendor-tenant deployment, hospital is HITRUST-certified) that materially change the advice if wrong"
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+        "reason": "'At least three of eight' is a low bar \u2014 both runs cleared it easily, and the without_skill run cleared it while omitting the three artifacts (system inventory, red-team report, impact assessment) that are the actual differentiator. Raise the threshold to five, or require the specifically AI-governance artifacts rather than the generic ones."
+      },
+      {
+        "assertion": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+        "reason": "'High-priority' is not operationalized. The without_skill run listed evals as gap #6 of 8 in a list explicitly ranked by blast radius, and still passes. Consider requiring it in the top 3 of the stated priority ordering or in the earliest time horizon."
+      },
+      {
+        "reason": "No assertion covers deployment-in-the-client's-tenant / data-residency posture, which the with_skill run identified as the single most likely deal-blocker (finding 1). Also nothing covers least-agency / tool-surface enumeration or egress redaction, both of which appeared in both runs. These are meaningful outcomes going uncounted."
+      },
+      {
+        "reason": "Two sharp technical findings appeared ONLY in without_skill \u2014 Bedrock cross-region inference profiles silently moving data across regions, and Bedrock model invocation logging being off (you cannot prove what was sent). If those matter, they should be assertions; if they don't, note that the skill run is currently losing points on the checkpointer assertion for a gap the base model catches unaided."
+      }
+    ],
+    "overall": "Assertions are mostly discriminating, but two (artifacts, eval priority) are satisfiable without the skill's specific value-add. The checkpointer assertion is the only one that inverts \u2014 the base model catches it and the skill run misses it \u2014 which is worth investigating as a genuine skill gap rather than eval noise."
+  }
+}

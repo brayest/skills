@@ -1,0 +1,108 @@
+{
+  "eval_id": 1,
+  "eval_name": "iso-42001-necessary-or-not",
+  "configuration": "with_skill",
+  "expectations": [
+    {
+      "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+      "passed": true,
+      "evidence": "First word of the body: '**No.** Nothing obligates it, and you couldn't get it in time even if you wanted to.' Closing: 'For a small team, one client, one internal tool, US only — it's the wrong investment right now. Build the artifacts, defer the audit.' The conditions under which it would flip are stated separately and explicitly ('Where the answer would flip'), which sharpens rather than dilutes the recommendation."
+    },
+    {
+      "text": "States that ISO 42001 is not legally required (no US law mandates it) and is a voluntary certifiable standard",
+      "passed": true,
+      "evidence": "Binding-layer table: '**ISO/IEC 42001** | Not required | Certifiable, but voluntary and contractual-only. Nobody *needs* it; a client can *demand* it.' Opening: 'Nothing obligates it.'"
+    },
+    {
+      "text": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable",
+      "passed": true,
+      "evidence": "'Certification requires an *audited, running* management system — realistically 6–12 months of accumulated evidence (internal audits, management reviews, monitoring records) before a Stage 2 audit is even passable, plus a two-stage audit and real money.' Correctly identifies the binding constraint as evidence accumulation, not paperwork."
+    },
+    {
+      "text": "Recommends NIST AI RMF as the immediate, free, non-certifiable alternative",
+      "passed": true,
+      "evidence": "'**NIST AI RMF** | Yes, in practice | Voluntary and non-certifiable — but it's the vocabulary US buyers speak, and it's what you should build against now.' And: 'It maps cleanly onto NIST AI RMF, which is free, immediate, and — importantly — is the structure ISO 42001 is built on. So none of it is wasted if you certify later.'"
+    },
+    {
+      "text": "States explicitly that NIST AI RMF has no certification / cannot be certified against",
+      "passed": true,
+      "evidence": "Stated verbatim in the binding-layer table: 'Voluntary and non-certifiable'."
+    },
+    {
+      "text": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity",
+      "passed": true,
+      "evidence": "'**EU AI Act** | No | US-only deployment. Law, but not your law. Revisit if they ever deploy in the EU.' (The presumption-of-conformity half is not addressed, but the assertion is an OR.)"
+    },
+    {
+      "text": "Suggests what to actually offer the client instead (evidence/artifacts, e.g. AI RMF alignment, data-flow, security controls) to unblock signature",
+      "passed": true,
+      "evidence": "'What to hand them instead — days of work, not months': data-flow diagram with trust boundary (half a day), system card including 'what it must never be trusted to do', eval harness + first evaluation report, event logs / decision traces, AI system inventory (~1 hr), model/vendor assessment. Plus a contractual bridge: 'data-handling and residency commitments, no-training-on-client-data, incident notification timelines, an audit right.' Includes scripted framing: \"We're not certified, and here's why that shouldn't block the signature.\""
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "executor_duration_seconds": 61.9,
+    "total_duration_seconds": 61.9,
+    "total_tokens": 49367
+  },
+  "claims": [
+    {
+      "claim": "ISO 42001 certification realistically requires 6-12 months of a running management system before Stage 2 is passable",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Consistent with certification-body guidance; the answer honestly discloses its sourcing: 'ISO 42001 is paywalled; the summary above is from certification-body sources, not the standard's text.'"
+    },
+    {
+      "claim": "NIST AI RMF is the structure ISO 42001 is built on",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Overstated. ISO/IEC 42001 is an Annex SL management-system standard (structurally derived from ISO 27001/9001), not from NIST AI RMF; the two are aligned/crosswalked, not parent-child. The practical advice ('none of it is wasted if you certify later') survives, but the causal claim is wrong."
+    },
+    {
+      "claim": "The real unresolved question is what data the tool touches and whether sector law (HIPAA/GLBA/FERPA) applies",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Justified and the most valuable move in the answer: 'If the tool touches regulated data, *this* is the layer with teeth, not ISO.' Correctly refuses to let the ISO question crowd out the layer that actually has legal force. The baseline made a version of this point too but placed it as a footnote rather than a live gap."
+    },
+    {
+      "claim": "ISO 42001 costs ~CHF 180 to purchase",
+      "type": "factual",
+      "verified": true,
+      "evidence": "In the right range for the ISO store price of the standard document (distinct from certification cost, which the answer keeps separate)."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Answer self-flags that ISO 42001 content is sourced from certification-body summaries, not the paywalled standard text"
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "This eval is NON-DISCRIMINATING: both runs scored 7/7. Every assertion is satisfied by any competent generalist answer — 'ISO 42001 is voluntary', 'EU AI Act doesn't apply to US-only', 'NIST AI RMF is free and non-certifiable' are all widely-known facts, not skill-dependent reasoning. The eval currently measures baseline model knowledge, not the skill."
+      },
+      {
+        "assertion": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity",
+        "reason": "The OR makes this trivially passable — 'US only, so no EU AI Act' is the obvious first thing anyone says. Drop the first branch and require the presumption-of-conformity point specifically (ISO 42001 is NOT a harmonised standard and confers no presumption of conformity under the AI Act). That is a genuine expert distinction that both runs failed to make, and it would immediately discriminate."
+      },
+      {
+        "assertion": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable",
+        "reason": "Both runs cleared this, but only the with-skill run identified WHY (accumulated evidence: internal audits, management reviews, monitoring records — you cannot compress it with money). Tighten the assertion to require naming the evidence-accumulation constraint rather than just a duration/dollar range, and the baseline's '$40-120k and 6-12 months' would no longer suffice."
+      },
+      {
+        "reason": "No assertion covers the highest-value behavior observed: refusing to answer the ISO question in isolation and escalating to 'what data does this tool touch, and does it make decisions about people?' — because sector law (HIPAA/GLBA/FERPA) or a data-residency clause would be the layer with actual teeth. Add an assertion requiring the answer to surface sector-law applicability as the unresolved gating question. Neither run would pass it cleanly today, which makes it a good target for iteration 2."
+      },
+      {
+        "reason": "Consider adding a NEGATIVE assertion: the answer must not invent a hard cost figure it cannot source. The baseline asserts '$40-120k' with no hedge; the with-skill run says 'real money' and discloses its sourcing. Rewarding calibrated uncertainty is exactly what a compliance skill should be graded on."
+      }
+    ],
+    "overall": "Assertions are all satisfied by general knowledge — this eval does not currently test the skill. Rewrite around expert distinctions (no presumption of conformity, evidence-accumulation as the real timeline constraint, sector law as the unnamed binding layer) to make it discriminating."
+  }
+}

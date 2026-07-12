@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "eval_name": "measuring-nondeterministic-output-quality",
+  "prompt": "our PO says the generated tickets are sometimes wrong but she can't tell me how often. how do I actually measure this — the output is different every run so I can't just diff against expected.",
+  "assertions": [
+    {"text": "States the core reframe: assert properties/invariants rather than exact-match transcripts"},
+    {"text": "Proposes a golden set / curated eval dataset of inputs with expected properties"},
+    {"text": "Proposes deterministic code assertions as one layer (e.g. schema validity, requirement coverage, count bounds, forbidden strings)"},
+    {"text": "Proposes LLM-as-judge with a rubric as a second layer"},
+    {"text": "Addresses judge calibration or validating the judge against human scores (not treating judge output as ground truth)"},
+    {"text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric"},
+    {"text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call"},
+    {"text": "Recommends growing the eval set from real failures the PO rejects"}
+  ]
+}

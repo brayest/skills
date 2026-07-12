@@ -1,0 +1,105 @@
+{
+  "eval_id": 0,
+  "eval_name": "healthcare-security-review-readiness",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "Leads with HIPAA/HITRUST as the binding layer rather than opening with ISO 42001 or AI RMF",
+      "passed": true,
+      "evidence": "Opens with \"The first question on the call will be some version of **'does your system touch PHI?'**\" and the first substantive section is 'HIPAA / contractual' (BAA, HIPAA-eligible services, minimum necessary, breach notification). ISO 42001 and AI RMF are never used as the framing layer — AI RMF appears once, in passing, under 'Model/system card'. Passes on HIPAA-first framing; note that HITRUST is relegated to one line under 'Organizational'."
+    },
+    {
+      "text": "States that the first question will be about where client data / PHI goes (data flow and residency)",
+      "passed": true,
+      "evidence": "\"The first question on the call will be some version of 'does your system touch PHI?'\" and the closing meta-point: 'What you cannot hand-wave is the data path — because their documents are your input, and they will follow that document all the way through your system and ask where every copy of it lives.' Residency is covered via cross-region inference profiles: 'A hospital that has told you \"data stays in us-east\" will care.'"
+    },
+    {
+      "text": "Mentions HITRUST's AI-specific assessments (AI Security Assessment and/or AI Risk Management Assessment)",
+      "passed": false,
+      "evidence": "HITRUST appears exactly once, as a general certification: 'HITRUST if you want to skip a lot of questionnaire pain with health systems — expensive, but it's the currency in this market.' No mention of the AI Security Assessment, the AI Risk Management Assessment, or any AI-specific HITRUST product. The generic name-drop does not satisfy an assertion about AI-specific assessments."
+    },
+    {
+      "text": "Notes that AWS Bedrock requires a BAA and/or that HIPAA-eligible does not equal compliant",
+      "passed": true,
+      "evidence": "'AWS — yes, covered under the AWS BAA; Bedrock is a HIPAA-eligible service; but *only* if your account is under the AWS BAA and you only use HIPAA-eligible services.' The eligibility≠compliance nuance is made explicitly: 'People get caught here on the peripheral stuff — CloudWatch Logs (eligible), a third-party logging/observability SaaS (probably not under BAA)'. Also actionable: 'Confirm your AWS account is under the AWS BAA and every service you use is HIPAA-eligible.'"
+    },
+    {
+      "text": "Identifies concrete missing artifacts, naming at least three of: AI system inventory, model/system cards, data-flow diagram, eval harness/evaluation report, tracing/event logs, red-team results, incident log, impact assessment",
+      "passed": true,
+      "evidence": "The ranked 'What you're most likely missing' list names four+ from the set: '3. An AI-specific audit trail' (tracing/event logs), '5. A data flow diagram', '6. Model/system card', '7. Eval results'. Incident response plan is also named under Organizational. Missing from the set: AI system inventory, red-team results, impact assessment."
+    },
+    {
+      "text": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+      "passed": false,
+      "evidence": "Eval results appear at position 7 of 8 in an explicitly ranked missing list, and are absent from the 'What to do before the meeting' checklist entirely. The answer actively de-prioritizes accuracy: 'Hallucination / accuracy. \"What happens when it generates a wrong ticket?\" **They're less worried about this than you think**, because it's a dev-workflow tool with a human in the loop — lean on that hard.' Recommending it as a 'visible maturity signal' near the bottom of a ranked list, while telling the reader to lean on human-in-the-loop instead, is not recommending it as a high-priority gap."
+    },
+    {
+      "text": "Flags that a SaaS/external trace or observability store would carry client data across the boundary",
+      "passed": true,
+      "evidence": "Ranked #1 of things most likely missing: 'LLM trace/observability data containing PHI in a non-BAA SaaS. LangSmith, Langfuse Cloud, Datadog LLM Obs, Helicone — if any of these are in the loop, your prompts (which contain their document text) are leaving the boundary. Self-host it or route it to your own S3/OpenSearch. This is the single most common finding in LangGraph shops.'"
+    },
+    {
+      "text": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+      "passed": true,
+      "evidence": "'What you're most likely missing (**ranked**)' is an explicitly ordered 1–8 list, followed by a distinct action set, 'What to do before the meeting' (9 concrete items). That is prioritization, not an undifferentiated dump. Weaker than a phased now/pre-pilot/pre-prod sequence — there is only one time horizon ('before the meeting') and no 'do not do this' list — but the assertion as written is satisfied."
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 2,
+    "total": 8,
+    "pass_rate": 0.75
+  },
+  "timing": {
+    "executor_duration_seconds": 95.5,
+    "total_duration_seconds": 95.5,
+    "total_tokens": 32373
+  },
+  "claims": [
+    {
+      "claim": "Bedrock doesn't use inputs/outputs to train base models and data isn't shared with model providers",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct per AWS Bedrock data-privacy documentation, and the answer correctly tells the reader to 'have the AWS documentation link ready' rather than asserting it unsupported."
+    },
+    {
+      "claim": "Bedrock's default for many newer models is a cross-region inference profile that can route invocations to another region",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate and genuinely valuable — this is a real residency trap the with-skill run did not surface. Strongest AWS-specific insight in either eval-0 run."
+    },
+    {
+      "claim": "Hospital security teams are 'less worried than you think' about hallucination because a human reviews every ticket",
+      "type": "quality",
+      "verified": false,
+      "evidence": "Unjustified and materially risky advice. It leans on human-in-the-loop as a mitigating control without engaging automation bias (a reviewer rubber-stamping generated tickets is not oversight), and it directly caused the eval-harness gap to be deprioritized. The with-skill run named the opposite: 'a PO who rubber-stamps 40 generated tickets is not oversight, it's theatre.'"
+    },
+    {
+      "claim": "LangGraph checkpointers accumulate full conversation state including document content, indefinitely, by default",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correct and specific to the stated stack; a real retention gap neither the assertions nor the with-skill run captured."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "assertion": "Recommends an eval harness or measurement of output accuracy as a high-priority gap",
+        "reason": "This is the eval's best assertion — it separated the runs on substance, not vocabulary. Consider strengthening it further to require that the answer NOT treat human-in-the-loop as a substitute for measurement; the baseline's 'lean on human review, they're less worried about accuracy than you think' is exactly the failure mode worth catching by name."
+      },
+      {
+        "reason": "The baseline surfaced two correct, high-value AWS specifics the with-skill run missed entirely: Bedrock cross-region inference profiles as a data-residency trap, and LangGraph checkpointer state retention with no TTL. No assertion covers either, so the skill gets no penalty for omitting them. If the skill is meant to be the stronger answer end-to-end, an assertion on stack-specific residency/retention traps would expose a real regression."
+      },
+      {
+        "assertion": "Gives a prioritized sequence (what to do now vs. before pilot) rather than an undifferentiated list",
+        "reason": "Passed for both runs on a technicality (the baseline's list is labeled 'ranked'). Require ≥2 distinct time horizons plus an explicit 'not now' exclusion list to make it discriminating."
+      }
+    ],
+    "overall": "The baseline is a strong, AWS-fluent answer; the two failures are substantive, not stylistic — it does not know HITRUST has AI-specific assessments, and it talks the reader out of the eval harness. Those are precisely the two things the skill should own."
+  }
+}

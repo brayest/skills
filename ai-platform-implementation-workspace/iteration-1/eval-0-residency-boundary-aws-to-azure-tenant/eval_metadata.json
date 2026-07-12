@@ -1,0 +1,14 @@
+{
+  "eval_id": 0,
+  "eval_name": "residency-boundary-aws-to-azure-tenant",
+  "prompt": "customer won't let any of their data leave their azure tenant, but we built everything on AWS/Bedrock. what actually has to move and what can stay?",
+  "assertions": [
+    {"text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) — Bedrock cannot serve the data-bearing calls"},
+    {"text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data"},
+    {"text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)"},
+    {"text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause"},
+    {"text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)"},
+    {"text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change"},
+    {"text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database"}
+  ]
+}

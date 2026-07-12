@@ -1,0 +1,107 @@
+{
+  "eval_id": 0,
+  "eval_name": "residency-boundary-aws-to-azure-tenant",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "States that the MODEL ENDPOINT must move inside the tenant (e.g. Azure AI Foundry / Azure OpenAI) — Bedrock cannot serve the data-bearing calls",
+      "passed": true,
+      "evidence": "'Has to move (touches customer content)' table, first row: 'Bedrock inference | Azure AI Foundry / Azure OpenAI'. The mental model is stated as 'Anything that touches customer content runs in their Azure subscription.' Note: the answer hedges on whether Bedrock could stay if it were in the client's own AWS account ('spend one email probing whether Bedrock in their own AWS account with PrivateLink + CMK ... is acceptable — it usually isn't'), but under the assumed reading (#2) it clearly places inference inside the Azure subscription."
+    },
+    {
+      "text": "States that the TRACE / OBSERVABILITY store must also move inside the boundary because traces contain client data",
+      "passed": true,
+      "evidence": "'The fights you'll have' → '**Traces.** Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant ... Either self-host the trace backend in their subscription, or redact payloads at the SDK boundary and ship only spans + metrics.' The 'traces contain client data' rationale is explicit."
+    },
+    {
+      "text": "States that LOG and AUDIT destinations must also live inside the tenant (not shipped to a vendor-owned aggregation account)",
+      "passed": true,
+      "evidence": "Move table: 'Bedrock model invocation logging | Foundry diagnostic settings → their Log Analytics / Blob | This log *contains prompts and completions*. It's customer data.' And in the bottom line: 'any log that carries a payload' moves. Only content-free aggregate telemetry is allowed to stay, with an explicit DPA carve-out required."
+    },
+    {
+      "text": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause",
+      "passed": true,
+      "evidence": "'Datadog LLM Observability / Langfuse / whatever you're using captures prompt and completion bodies. That is a straight-line exfil path out of their tenant and their security team will find it.' Vendors named explicitly."
+    },
+    {
+      "text": "Identifies what CAN stay outside: things containing no client data (e.g. CI/CD, container registry/images, IaC, source code, dev/synthetic environments)",
+      "passed": true,
+      "evidence": "'Can stay on AWS (no customer content)' section: 'Source code, prompt templates, model config, Helm charts, Terraform modules'; 'CI/CD (GitHub Actions or whatever) — it builds and deploys into their tenant, it doesn't process their data'; 'Container registry — but mirror images into their ACR'; 'Aggregate, content-free telemetry'. Also correctly flags Terraform state as needing an audit first, and that eval golden sets built from customer documents ARE customer data."
+    },
+    {
+      "text": "Notes that a cloud-agnostic Kubernetes core is what makes the move feasible and that only provider bindings change",
+      "passed": true,
+      "evidence": "'Everything else stays portable *if it's already on Kubernetes*. Your EKS workloads move to AKS with real but bounded pain: IRSA → AKS Workload Identity (both are OIDC federation, the shape is the same), IAM roles → Entra managed identities + RBAC, SGs/NACLs → NSGs + NetworkPolicy'. The provider-binding seams are named explicitly ('Cut abstraction seams at exactly three places and keep one codebase: model provider, object store, vector/search store'), with the counter-case called out: 'If anything is on Lambda/Step Functions/DynamoDB Streams, that part is a rewrite, not a port.'"
+    },
+    {
+      "text": "Distinguishes the compliance boundary as 'everything client data touches' rather than only the app and database",
+      "passed": true,
+      "evidence": "'The clean mental model is BYOC / in-tenant data plane. Anything that touches customer content runs in their Azure subscription.' Operationalized as: 'Inventory every place a prompt, completion, or document body is written to disk or crosses a network boundary. That list *is* your migration scope — everything else is noise.' The move table extends well past app+DB (queues, parsing workers, invocation logs, guardrails, embeddings)."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 6612,
+    "total_tokens": 33068
+  },
+  "timing": {
+    "executor_duration_seconds": 93.4,
+    "total_duration_seconds": 93.4
+  },
+  "claims": [
+    {
+      "claim": "~90% of enterprises mean the subscription/tenant boundary reading, and Azure OpenAI / AI Foundry satisfies it",
+      "type": "factual",
+      "verified": false,
+      "evidence": "The 90% figure is fabricated precision — no source, and unverifiable. The underlying structural point (three readings of 'won't leave our tenant') is sound, but the statistic is invented."
+    },
+    {
+      "claim": "The embedding model change forces a full corpus reindex and retrieval re-tuning, and this is bigger than the infra port",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'The hidden cost nobody scopes' — a genuinely non-obvious and correct observation (embedding-space change invalidates chunking/reranker/top-k tuning). Notably this is a RAG-specific insight the with_skill run did NOT surface. It assumes the platform is a RAG system, which the prompt does not state, but it is flagged as a conditional cost, not a fact about the user's system."
+    },
+    {
+      "claim": "Anthropic models are available in Microsoft Foundry",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Correctly hedged in-line: 'verify current model + region availability yourself, don't take my word for it. If Claude isn't available in their region, it's GPT-family or self-hosted.' The uncertainty is surfaced rather than asserted."
+    },
+    {
+      "claim": "Bedrock in the client's own AWS account with PrivateLink + CMK could satisfy the clause and is worth probing",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Correct premise-challenge, same substance as the with_skill run's §5, though given one sentence rather than a structured decision point."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [
+      "Model/region availability in Foundry is explicitly flagged as unverified and delegated to the reader"
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "The baseline passed 7/7 — identical to with_skill. This eval has NO discriminating power as written. A strong base model already knows the residency split. Assertions must move to the layer the baseline actually misses."
+      },
+      {
+        "reason": "Concrete gaps the baseline has that no assertion catches: (a) no mention that Azure audit surfaces are OFF BY DEFAULT (Foundry diagnostic settings, AKS control-plane logs) or that Foundry public network access is ON by default; (b) no log immutability / WORM (Object Lock equivalent) for audit evidence — it mentions Blob immutability only for the document store; (c) no Global-vs-Regional deployment residency trap; (d) no default-deny NetworkPolicy / zero-internet-egress target inside the tenant (it says 'Azure Firewall with an FQDN allowlist', which is weaker); (e) no DNS-as-exfil-channel; (f) no alarm set; (g) no live-proof demo for the client's security team. Each of these is a candidate discriminating assertion."
+      },
+      {
+        "assertion": "Explicitly warns that a SaaS observability vendor (e.g. hosted Langfuse/Datadog) breaks the residency clause",
+        "reason": "Both runs pass, but they differ in strength: the baseline offers 'redact payloads at the SDK boundary and ship only spans + metrics' as an acceptable alternative to moving the trace store, while the with_skill run rules SaaS observability out entirely ('No SaaS observability ... no vendor-side OTLP collector'). If the skill's position is that redaction-to-a-vendor is NOT an acceptable residency answer, the assertion should say so — as written it accepts both."
+      },
+      {
+        "reason": "The baseline invented a statistic ('~90% of enterprises') that no assertion penalizes. Consider a negative assertion class (e.g. 'makes no unsourced quantitative claims about client behavior') if fabricated precision matters for this skill's credibility in front of security reviewers."
+      }
+    ],
+    "overall": "Baseline and with_skill both 7/7. The assertions measure the well-known half of the problem (what moves / what stays) and none measure the default-state, evidence, and enforcement half where the skill actually adds value. Recommend rewriting 2-3 assertions toward off-by-default enablement, log immutability, and the Global-inference residency trap."
+  }
+}

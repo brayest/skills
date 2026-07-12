@@ -373,3 +373,80 @@ it('has no accessibility violations', async () => {
   expect(results).toHaveNoViolations();
 });
 ```
+
+## Search-Engine Indexing Control (Internal / Token-Gated Apps)
+
+Any app that is not a public marketing site — internal tools, admin panels,
+dashboards, anything behind a login — **must be non-indexable from the first
+deploy**. A bare, unbranded credential prompt (e.g. a single "Access token" field)
+that is publicly crawlable is a textbook trigger for Google Safe Browsing's
+automated phishing-lookalike classifier, especially on an unfamiliar or non-brand
+domain. This produces a "Deceptive Pages" flag in Search Console with no actual
+malicious content — a false positive that still blocks the domain until re-review
+(days to ~2 weeks). Prevent it up front; do not wait to be flagged.
+
+Apply **both** signals — they do different jobs:
+
+### 1. `X-Robots-Tag` response header (the authoritative de-index signal)
+
+Set it on **every** response so it also covers `/login`, redirects, and any page a
+crawler lands on. In Next.js, add it to `next.config.ts` `headers()` alongside the
+other security headers:
+
+```typescript
+// next.config.ts
+async headers() {
+  return [
+    {
+      source: "/:path*",
+      headers: [
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        { key: "X-Robots-Tag", value: "noindex, nofollow" },
+      ],
+    },
+  ];
+}
+```
+
+Set the header **in the app**, not at the ingress/gateway. Many ALB/Gateway API
+controllers reject `ResponseHeaderModifier` filters ("Only request redirect is
+supported"), so a chart-level `responseHeaders` value silently no-ops. The app is
+the reliable, portable place.
+
+### 2. `robots.txt` (crawl suppression)
+
+```
+# public/robots.txt
+User-agent: *
+Disallow: /
+```
+
+### 3. Make sure the crawler can actually reach `robots.txt`
+
+If auth middleware redirects unauthenticated requests to `/login`, a crawler (which
+has no session cookie) gets bounced from `/robots.txt` and never reads it. Allowlist
+it in the middleware public paths:
+
+```typescript
+// middleware.ts — public, self-enforcing paths
+if (
+  pathname.startsWith("/login") ||
+  pathname.startsWith("/api/") ||
+  pathname === "/favicon.ico" ||
+  pathname === "/robots.txt"        // must stay crawler-reachable without a session
+) {
+  return NextResponse.next();
+}
+```
+
+### Verify
+
+```
+curl -I https://<host>/login   # expect: x-robots-tag: noindex, nofollow
+curl    https://<host>/robots.txt   # expect: Disallow: /  (200, not a login redirect)
+```
+
+If already flagged: land these, redeploy, then Search Console → Security Issues →
+**Request Review**.

@@ -1,0 +1,108 @@
+{
+  "eval_id": 1,
+  "eval_name": "measuring-nondeterministic-output-quality",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "States the core reframe: assert properties/invariants rather than exact-match transcripts",
+      "passed": true,
+      "evidence": "'Stop trying to diff against expected output. Exact-match is the wrong oracle for open-ended generation — two totally valid tickets can share zero tokens. What you actually want is: **freeze the inputs, not the outputs, and score each run against criteria.**' Reinforced in the golden-set schema: 'Note there's **no `expected_output`**. That's the point. The input is frozen; the output is graded.'"
+    },
+    {
+      "text": "Proposes a golden set / curated eval dataset of inputs with expected properties",
+      "passed": true,
+      "evidence": "'## 2. Build a golden set of inputs — 50–100 cases, sampled from real traffic, deliberately over-weighted toward the failure modes above.' The case schema carries expected properties: `\"must_mention\": [\"patient consent\", \"HL7 ingest\"]` and `\"must_not_mention\": [\"audit log\"]`."
+    },
+    {
+      "text": "Proposes deterministic code assertions as one layer (e.g. schema validity, requirement coverage, count bounds, forbidden strings)",
+      "passed": true,
+      "evidence": "'**Layer 1 — deterministic checks.** These are free, instant, and catch a shocking amount: Schema valid (title, description, AC, story points present); >=1 acceptance criterion...; No placeholder text (`TODO`, `[insert]`, `Lorem`); Every entity named in the ticket appears in the source input...; Title < N chars'. Wired into the harness as `checks = deterministic_checks(ticket, case)  # layer 1`."
+    },
+    {
+      "text": "Proposes LLM-as-judge with a rubric as a second layer",
+      "passed": true,
+      "evidence": "'**Layer 2 — LLM-as-judge, referenced against the input.** Not against a golden output. The judge gets the source doc + the generated ticket + a rubric of **binary** questions' followed by five explicit rubric questions. Also 'Do **not** ask for a 1–5 \"quality score\" — judges anchor to 4, the variance swamps your signal.'"
+    },
+    {
+      "text": "Addresses judge calibration or validating the judge against human scores (not treating judge output as ground truth)",
+      "passed": true,
+      "evidence": "'**Layer 3 — calibrate the judge.** This is the step everyone skips and it's what makes the number credible. Run the judge over the 50 tickets the PO already labeled in step 1. Compute agreement (Cohen's kappa, or just confusion matrix). If the judge disagrees with the PO, **the rubric is wrong, not the PO** — rewrite the criteria and re-run. Iterate until kappa > ~0.6.'"
+    },
+    {
+      "text": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+      "passed": true,
+      "evidence": "Step 1 makes the PO's accept/reject the primary measurement: 'have her mark each one accept/reject, and for every reject write one line on *why*' yielding 'your first honest base rate (\"13 of 50 rejected = ~26% ± 12pp\"). That alone answers the PO's question well enough to justify the rest of the work.' The PO's labels are also treated as ground truth against the judge ('the rubric is wrong, not the PO'), and the signal is made ongoing: 'Put a thumbs-down + one-line-reason on every generated ticket in the PO's UI.' Acceptance/rejection is captured and treated as the honest metric; edit rate specifically is not tracked, but the assertion admits acceptance/rejection as an alternative."
+    },
+    {
+      "text": "Says to evaluate through the real pipeline/graph under deployment-like conditions, not a bare isolated model call",
+      "passed": false,
+      "evidence": "No such statement. The harness calls a bare `generate_ticket(case.source)` with no discussion of exercising the real graph, gateway, prompt templates, retrieval step, or validation/retry middleware. The only nod to deployment conditions is 'Run each golden input **k=5 times** at production temperature' — one parameter, not the pipeline. The CI section mentions 'Any prompt edit, model version bump, or retrieval change runs the suite', which implies the suite has coverage of those, but never says the harness must go through the real code path rather than an isolated model call. Nothing addresses the seams between pipeline stages. Passing on 'production temperature' alone would be superficial satisfaction."
+    },
+    {
+      "text": "Recommends growing the eval set from real failures the PO rejects",
+      "passed": true,
+      "evidence": "'**Production feedback loop.** Put a thumbs-down + one-line-reason on every generated ticket in the PO's UI. Every rejection gets promoted into the golden set. In three months your golden set is the real distribution, not your guess at it.' The initial golden set is also seeded from rejections: '\"notes\": \"PO rejected the live run: invented an audit log component\"'."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.88
+  },
+  "timing": {
+    "total_duration_seconds": 74.7,
+    "total_tokens": 31779
+  },
+  "claims": [
+    {
+      "claim": "At n=50 you can resolve a ~25% failure rate to roughly ±12pp; at n=100, ±9pp",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Normal approximation for a binomial proportion: 1.96*sqrt(0.25*0.75/50) = 0.120 (±12pp) and 1.96*sqrt(0.25*0.75/100) = 0.085 (±8.5pp, ~±9pp). Both figures check out. This statistical sizing is the single best thing in this answer and the with-skill run has no equivalent."
+    },
+    {
+      "claim": "Judges anchor to 4 on a 1–5 scale, so use binary criteria",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'Do **not** ask for a 1–5 \"quality score\" — judges anchor to 4, the variance swamps your signal, and nobody can act on \"3.2 → 3.4\".' Well-established LLM-judge failure mode (central-tendency / positive bias on Likert scales); the binary-decomposition remedy is the standard fix. Justified."
+    },
+    {
+      "claim": "Don't build the harness before doing the labeling — you'll build the wrong rubric",
+      "type": "quality",
+      "verified": true,
+      "evidence": "'Step 1 alone (PO labels 50 tickets) takes an afternoon and gives you a number you can put in front of her this week... Don't build the harness before you've done the labeling.' Sound sequencing that directly answers the user's stated blocker (the PO can't say how often). Matches the with-skill run's Step 0 framing."
+    },
+    {
+      "claim": "The evaluation harness exercises the deployed system",
+      "type": "process",
+      "verified": false,
+      "evidence": "The harness is `runs = [generate_ticket(case.source) for _ in range(k)]` — an undefined generation call with no statement that it routes through the production graph, prompt templates, retrieval, or middleware. The answer never distinguishes model behavior from system behavior, so defects in the pipeline seams (planner/writer/reconcile, retry logic, output validation) would be invisible to this suite."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [
+      "Harness evaluates a bare generate_ticket() call; no guidance on exercising the real pipeline."
+    ],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "This eval barely discriminates: the baseline scored 7/8. Only assertion 7 (real pipeline vs bare model call) separated the configurations. Assertions 1–5 and 8 are the standard textbook answer to 'how do I eval non-deterministic output' and any competent model produces them unprompted."
+      },
+      {
+        "assertion": "Proposes capturing the human review signal (edit rate / acceptance / rejection) as the real quality metric",
+        "reason": "The 'or' in this assertion makes it weak — 'acceptance/rejection' alone is satisfied by any answer that says 'have the PO label some tickets'. If the skill's real contribution is a persisted, per-item, trace-linked review record with an edit-distance and a reject-reason enum (and a warning about approve-all rubber-stamping), assert THAT. The baseline's one-off 50-ticket labeling exercise would then correctly fail, and the assertion would become discriminating."
+      },
+      {
+        "reason": "No assertion covers running each case K times and reporting a pass rate / variance, which is literally what the user asked about ('the output is different every run'). Both runs did it, so it wouldn't discriminate today — but an answer could score 8/8 without ever addressing run-to-run variance, which would be a bad eval outcome."
+      },
+      {
+        "reason": "Important uncovered outcome, and it favours the BASELINE: it is the only run that does statistical sizing (n=50 → ±12pp; bootstrap a 95% CI; 'A prompt change that moves 82% → 84% on n=50 moved nothing'). For a PO asking 'how often', a failure-rate number without a confidence interval is exactly the false precision the exercise is meant to avoid. Consider adding an assertion for it — it would currently fail the with-skill run, which is a signal the skill should absorb."
+      }
+    ],
+    "overall": "Weak discrimination (7/8 baseline). The assertion set enumerates the well-known eval playbook rather than the skill's distinctive contributions. Tighten assertion 6, and add assertions for K-run variance reporting and sample-size/CI reasoning."
+  }
+}

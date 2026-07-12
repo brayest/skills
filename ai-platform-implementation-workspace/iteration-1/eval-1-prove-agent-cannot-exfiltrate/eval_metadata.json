@@ -1,0 +1,16 @@
+{
+  "eval_id": 1,
+  "eval_name": "prove-agent-cannot-exfiltrate",
+  "prompt": "we're on EKS calling Bedrock. security review is asking 'what stops the agent from sending data somewhere it shouldn't.' what do I actually show them?",
+  "assertions": [
+    {"text": "Recommends default-deny egress with no general internet route from workload subnets"},
+    {"text": "Names VPC interface endpoints / PrivateLink for Bedrock so model traffic never traverses the internet"},
+    {"text": "Recommends Kubernetes NetworkPolicies (default-deny, named allowed flows) for east-west and egress control"},
+    {"text": "Identifies DNS as an exfiltration channel that must also be restricted/logged"},
+    {"text": "Recommends S3 endpoint policy / aws:ResourceAccount condition to prevent writes to attacker-owned buckets"},
+    {"text": "Recommends model-ARN allowlisting via IAM role and/or SCP and/or VPC endpoint policy (layered)"},
+    {"text": "Names audit surfaces that are OFF BY DEFAULT and must be enabled (Bedrock model invocation logging and/or CloudTrail data events)"},
+    {"text": "Offers a concrete demonstrable proof for the reviewer (e.g. exec into a pod and show an outbound curl / external DNS resolution being blocked)"},
+    {"text": "Frames the agent threat model: every reachable destination / tool call is a potential exfiltration channel"}
+  ]
+}

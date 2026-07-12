@@ -79,6 +79,8 @@ For project structure, routing, styling, API layer, and accessibility:
 - "Should I use React Router v7 or TanStack Router?"
 - "How do I set up Tailwind CSS with CSS Modules?"
 - "How do I implement keyboard navigation?"
+- "How do I stop an internal/token-gated app from being indexed by Google?"
+- "Where do I set the X-Robots-Tag / noindex header in Next.js?"
 
 ## Core Principles
 
@@ -89,3 +91,4 @@ For project structure, routing, styling, API layer, and accessibility:
 5. **Semantic HTML first, ARIA when needed** — Use native elements (<button>, <nav>, <label>) before adding ARIA attributes. "No ARIA is better than bad ARIA."
 6. **Error boundaries at every feature boundary** — Not just at the root. Isolate failures so only the affected feature crashes.
 7. **Zero-runtime styling** — Tailwind CSS v4 or CSS Modules. Avoid runtime CSS-in-JS (styled-components, Emotion) in new projects.
+8. **Non-public apps are non-indexable by default** — Any internal, admin, or token-gated app ships with `X-Robots-Tag: noindex, nofollow` (set in-app, e.g. `next.config.ts` `headers()` — never rely on the ingress/gateway, which often rejects response-header filters), a `Disallow: /` `robots.txt`, and `/robots.txt` allowlisted in auth middleware so crawlers can read it. A crawlable unbranded credential form trips Google Safe Browsing's phishing classifier and gets the domain flagged "Deceptive Pages" — do this from the first deploy, not after a flag. See `references/architecture.md`.

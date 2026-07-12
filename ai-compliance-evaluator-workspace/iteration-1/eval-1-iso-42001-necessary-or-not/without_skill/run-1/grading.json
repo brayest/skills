@@ -1,0 +1,98 @@
+{
+  "eval_id": 1,
+  "eval_name": "iso-42001-necessary-or-not",
+  "configuration": "without_skill",
+  "expectations": [
+    {
+      "text": "Gives a clear recommendation of NO / not required, rather than an unresolved 'it depends'",
+      "passed": true,
+      "evidence": "'**No.** Nothing in your situation legally requires it, and it is almost certainly not what their legal team actually needs.' Followed by a 'Where to hold the line' section that says to 'Push back on: certification as a condition precedent to signature.'"
+    },
+    {
+      "text": "States that ISO 42001 is not legally required (no US law mandates it) and is a voluntary certifiable standard",
+      "passed": true,
+      "evidence": "'**ISO/IEC 42001 is voluntary.** It's a certifiable management-system standard (an AIMS, same shape as ISO 27001's ISMS). **No US law mandates it.** There is no US federal AI statute that would force it on you, and the state-level stuff that exists (Colorado AI Act, NYC Local Law 144, Illinois BIPA/AIVIA, the California ADMT rules) is scoped to specific use cases... not to \"we built an internal tool.\"'"
+    },
+    {
+      "text": "Explains the certification cost/timeline reality: needs a running management system (roughly 6-12 months) before a Stage 2 audit is passable",
+      "passed": true,
+      "evidence": "'Realistically $40–120k and 6–12 months (gap analysis, build the AIMS, **run it long enough to produce evidence**, Stage 1 + Stage 2 audit, then annual surveillance). You'd be certifying a management system your team is too small to actually operate. And you can't produce it before signature anyway — so if they truly gate on it, the deal is dead regardless.' Names the running-system requirement, the 6-12 month window, and Stage 2 explicitly."
+    },
+    {
+      "text": "Recommends NIST AI RMF as the immediate, free, non-certifiable alternative",
+      "passed": true,
+      "evidence": "Artifact table row: '**NIST AI RMF mapping** | One page mapping what you already do to Govern / Map / Measure / Manage. Free, US-native, from NIST...' Positioned as part of a package that is 'a few days of writing, not a year of audit', and included in the scripted line to give the client."
+    },
+    {
+      "text": "States explicitly that NIST AI RMF has no certification / cannot be certified against",
+      "passed": true,
+      "evidence": "'Free, US-native, from NIST, and ***not* certifiable** — which is the point: you can claim alignment honestly without an auditor.'"
+    },
+    {
+      "text": "Notes that the EU AI Act does not apply to a US-only deployment, or that ISO 42001 confers no EU AI Act presumption of conformity",
+      "passed": true,
+      "evidence": "'**The EU AI Act doesn't reach you.** US only, internal tool, no EU users or EU market placement. Out of scope.' Additionally flags the edge case: 'if they're a US subsidiary of an EU parent, their legal may be pre-positioning for EU AI Act pressure from HQ.'"
+    },
+    {
+      "text": "Suggests what to actually offer the client instead (evidence/artifacts, e.g. AI RMF alignment, data-flow, security controls) to unblock signature",
+      "passed": true,
+      "evidence": "'What to give them instead' table: system/model card, data flow + handling doc (retention, no-training terms in writing), human-in-the-loop statement, eval + testing summary (golden set, accuracy/failure rates), security posture (access controls, logging, tenancy, incident response), NIST AI RMF mapping. Plus a verbatim block-quoted script to send to their legal team and a 'Consider: a contractual commitment to pursue certification by a date' bridge."
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 0,
+    "total": 7,
+    "pass_rate": 1.0
+  },
+  "timing": {
+    "executor_duration_seconds": 43.4,
+    "total_duration_seconds": 43.4,
+    "total_tokens": 29905
+  },
+  "claims": [
+    {
+      "claim": "ISO 42001 certification costs $40-120k",
+      "type": "factual",
+      "verified": false,
+      "evidence": "Plausible but presented as a hard range with no sourcing or hedge. Unverifiable from the outputs; costs vary widely by scope, body, and org size. The with-skill run's 'real money' + explicit disclosure that ISO content came from certification-body summaries rather than the paywalled standard is the more calibrated posture."
+    },
+    {
+      "claim": "State-level AI laws (Colorado AI Act, NYC LL144, Illinois BIPA/AIVIA, California ADMT) are scoped to specific use cases and don't reach an internal tool",
+      "type": "factual",
+      "verified": true,
+      "evidence": "Accurate and specific — this is the strongest single passage in the baseline answer and it goes beyond the assertion, which only asked for 'no US law mandates it'."
+    },
+    {
+      "claim": "The human-in-the-loop statement is 'the single most load-bearing sentence for a lawyer'",
+      "type": "quality",
+      "verified": false,
+      "evidence": "Same over-reliance on human-in-the-loop as a control that appeared in this configuration's eval-0 answer. It is a real mitigant, but presenting it as the load-bearing assurance without addressing automation bias or what happens when the human rubber-stamps is a consistent baseline weakness."
+    },
+    {
+      "claim": "'Legal saw AI and reached for the only AI acronym they know' — the ISO ask is a reassurance request in a certification costume",
+      "type": "quality",
+      "verified": true,
+      "evidence": "Justified and correctly diagnosed; the with-skill run made the identical read ('a proxy question... 42001 is the only name they know'). Convergent, which is itself evidence the assertion set is not testing anything skill-specific."
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "NON-DISCRIMINATING EVAL: baseline scored 7/7, identical to with_skill. The baseline answer is arguably better on some axes (names the actual state-level statutes: Colorado AI Act, NYC LL144, BIPA/AIVIA, California ADMT — the with-skill run names none of them). Every assertion here tests general knowledge, not skill-mediated reasoning."
+      },
+      {
+        "reason": "The two runs converged on the same core diagnosis ('legal is asking a proxy question'), the same recommendation (no cert, ship artifacts), and the same artifact list. If the skill adds value on this prompt, the assertions are not written to detect it. Recommend rewriting the eval entirely around expert-only distinctions: (1) ISO 42001 is not a harmonised standard and confers no EU AI Act presumption of conformity; (2) the 6-12 months is evidence-accumulation time and cannot be bought down; (3) sector law (HIPAA/GLBA/FERPA) and any contractual data-residency clause outrank ISO and must be resolved first."
+      },
+      {
+        "reason": "Add a calibration assertion. The baseline states '$40-120k' as fact with no sourcing; the with-skill run explicitly discloses that ISO 42001 is paywalled and its summary comes from certification-body sources. Grading for honest sourcing would separate the runs and is a property a compliance skill should be held to."
+      }
+    ],
+    "overall": "Zero discrimination. This eval validates that the base model already knows the ISO 42001 answer; it does not test the skill. Rewrite before iteration 2."
+  }
+}

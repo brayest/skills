@@ -1,0 +1,8 @@
+{
+  "expectations": [
+    {"text": "Names the lost-in-the-middle effect as the cause of the support bot forgetting the account number", "passed": true, "evidence": "\"b) Lost-in-the-middle effect. Even if the full history is technically in context, models are measurably worse at retrieving information from the middle...\""},
+    {"text": "Recommends a fact block re-anchored at end of context, warns against summarization", "passed": true, "evidence": "\"Re-anchor critical facts near the end of context\" and \"If you must keep raw history, don't blindly truncate/summarize\""},
+    {"text": "Names the vague-adjective pattern for the CI bot", "passed": false, "evidence": "Diagnoses it as 'the prompt asks a low-bar question' / calibration and confidence-gating problem, not specifically as ambiguous adjectives lacking a checkable definition — a related but distinct framing."},
+    {"text": "Recommends checkable rules AND structured category gating", "passed": true, "evidence": "Recommends raising the bar with an explicit high-confidence-only instruction and structured JSON with severity/confidence/category, filtered programmatically before posting."}
+  ]
+}

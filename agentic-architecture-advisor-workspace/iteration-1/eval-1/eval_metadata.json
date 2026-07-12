@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "pipeline-shape-and-mcp-transport",
+  "prompt": "I'm building a pipeline: it needs to read ~10 internal files, do some web research, and write a synthesized report. Should I use a single Claude call, a coordinator with sub-agents, or something else? Also, I want to stand up an MCP server for our internal wiki that Claude Code will call — the wiki server would run on the same laptop as Claude Code. What transport should I use for that?",
+  "assertions": [
+    "Explicitly frames the pipeline choice as workflow-vs-agent(-vs-multi-agent), not just 'here's how to do it with sub-agents'",
+    "Cites the token/cost overhead of multi-agent orchestration as a factor in the recommendation (not just capability)",
+    "Ties the sub-agent/no-sub-agent decision to whether the steps are open-ended vs. knowable in advance",
+    "Recommends STDIO transport for the MCP server and explicitly ties the reasoning to same-machine co-location"
+  ]
+}
